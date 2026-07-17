@@ -34,6 +34,7 @@ from the Conventional Commits merged to `main`:
 | `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
 | `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
+| `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
 
 Composite actions are versioned independently of each other and of the
 workflows; the reusable workflows share the single `workflows` stream because
@@ -179,6 +180,26 @@ jobs:
     steps:
       - uses: jabrown93/ci/actions/stale@<sha> # stale-v1.0.0
 ```
+
+### `release-checkout` — app-token + branch-tip checkout for a release job
+
+**Internal.** Mints a GitHub App token and checks out the branch tip
+(`fetch-depth: 0`, `ref: github.ref`) for a semantic-release job, exposing the
+token as an output. Used by `docker-release.yml` and `npm-release.yml` to remove
+their duplicated app-token + checkout preamble.
+
+| input | default |
+|---|---|
+| `app-id` | *(required)* GitHub App client id |
+| `app-private-key` | *(required)* GitHub App private key |
+| `fetch-depth` | `'0'` |
+
+output: `token` — the minted installation token, for the release step.
+
+> A reusable workflow must reference this by its **full pinned ref**
+> (`jabrown93/ci/actions/release-checkout@<sha>`), **not** `./actions/release-checkout`
+> — a local `./` ref used from inside a reusable workflow resolves against the
+> **caller's** checkout, not this repo.
 
 ---
 
