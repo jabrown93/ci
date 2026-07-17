@@ -1,0 +1,60 @@
+---
+# Composite action: lint + format-check + build + test a Node.js project for a
+# SINGLE Node version. Mirrors the per-repo "Build and Lint" workflow the
+# Homebridge plugins carried.
+#
+# A composite action cannot declare a matrix, so the CALLER owns the version
+# matrix and runs-on:
+#   jobs:
+#     build:
+#       strategy:
+#         fail-fast: false
+#         matrix:
+#           node-version: ['22.x', '24.x']
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: jabrown93/ci/actions/node-build@<sha> # node-build-v1.0.0
+#           with:
+#             node-version: ${{ matrix.node-version }}
+name: Build and Lint
+description: >-
+  Check out the repo, then lint, format-check, build and test a Node.js project
+  for a single Node version. The caller owns the version matrix and runs-on.
+inputs:
+  node-version:
+    description: Node.js version to build against (the caller owns the matrix)
+    required: false
+    default: 24.x
+runs:
+  using: composite
+  steps:
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Use Node.js ${{ inputs.node-version }}
+      uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install dependencies
+      shell: bash
+      run: npm install
+
+    - name: Lint the project
+      shell: bash
+      run: npm run lint
+
+    # Consumers run `prettier --check .` from prepublishOnly, which gates the
+    # npm publish rather than the PR: a formatting nit fails the release after
+    # semantic-release has already committed, tagged and pushed. Check it here
+    # so it blocks the PR instead, and publishing only builds the artifact.
+    - name: Check formatting
+      shell: bash
+      run: npm run prettier
+
+    - name: Build the project
+      shell: bash
+      run: npm run build
+
+    - name: Test the project
+      shell: bash
+      run: npm run test

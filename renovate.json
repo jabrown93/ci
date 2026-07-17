@@ -10,9 +10,9 @@
       "semanticCommitType": "fix"
     },
     {
-      "description": "Undo the rule above for release.yml, this repo's OWN release-please runner, which no consumer calls -- a bump to an action inside it changes nothing a consumer executes and must not cut a release. It lives under .github/workflows/, so without this override its bump would be attributed to the `workflows` component and release it. Composes with grouped branches: generateBranchConfig picks the highest-priority type among grouped upgrades (chore < ci < build < fix < feat), so a branch mixing a release.yml bump with a real reusable-workflow bump still releases as `fix`; only a release.yml-exclusive bump stays `chore` and silent. Deny-list the one non-reusable file rather than allow-list the reusable ones, so a newly added reusable workflow releases by default.",
+      "description": "Undo the rule above for _release.yml, this repo's OWN release-please runner, which no consumer calls -- a bump to an action inside it changes nothing a consumer executes and must not cut a release. It lives under .github/workflows/, so without this override its bump would be attributed to the `workflows` component and release it. The `_` prefix marks it as ci-internal (vs the bare reusable-workflow filenames). Composes with grouped branches: generateBranchConfig picks the highest-priority type among grouped upgrades (chore < ci < build < fix < feat), so a branch mixing a _release.yml bump with a real reusable-workflow bump still releases as `fix`; only a _release.yml-exclusive bump stays `chore` and silent. Deny-list the one ci-internal file rather than allow-list the reusable ones, so a newly added reusable workflow releases by default.",
       "matchManagers": ["github-actions"],
-      "matchFileNames": [".github/workflows/release.yml"],
+      "matchFileNames": [".github/workflows/_release.yml"],
       "semanticCommitType": "chore"
     }
   ]

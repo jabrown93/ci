@@ -3,10 +3,18 @@
 Shared GitHub Actions CI library for all `jabrown93` repositories: reusable
 workflows and composite actions, each versioned independently.
 
-- **Reusable workflows** — in [`.github/workflows/`](.github/workflows),
-  consumed via `uses:` at the **job** level.
 - **Composite actions** — in [`actions/`](actions), consumed via `uses:` from a
-  **step**.
+  **step**. Prefer these: they run on the caller's job, so the caller controls
+  `runs-on`, matrix, and permissions.
+- **Reusable workflows** — in [`.github/workflows/`](.github/workflows) with
+  **bare** filenames, consumed via `uses:` at the **job** level. Reserved for
+  the things that *cannot* be composite actions: multi-job pipelines and
+  workflow-level OIDC/permissions (the release + SBOM-upload flows).
+
+> **Naming tells you what a file is.** Under `.github/workflows/`, a **bare**
+> name (`docker-release.yml`) is a shared reusable workflow; a name prefixed
+> with **`_`** (`_release.yml`) is this repo's *own* CI and is not for external
+> use. Composite actions all live under `actions/`, out of `.github/`.
 
 > Org-wide *defaults* (issue/PR templates, `CODE_OF_CONDUCT`, `SECURITY`, the
 > Renovate preset) live in [`jabrown93/.github`](https://github.com/jabrown93/.github),
@@ -15,18 +23,23 @@ workflows and composite actions, each versioned independently.
 ## Components and versioning
 
 Each component has its **own** tag stream, cut automatically by
-[`release.yml`](.github/workflows/release.yml) with
+[`_release.yml`](.github/workflows/_release.yml) with
 [release-please](https://github.com/googleapis/release-please) (manifest mode)
 from the Conventional Commits merged to `main`:
 
 | Component | Contents | Tag |
 |---|---|---|
-| `workflows` | all reusable workflows (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
+| `workflows` | the reusable workflows — `docker-release`, `npm-release`, `dt-sbom-upload` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
 | `generate-sbom` | the `generate-sbom` composite action | `generate-sbom-vX.Y.Z` |
+| `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
+| `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
+| `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 
 Composite actions are versioned independently of each other and of the
 workflows; the reusable workflows share the single `workflows` stream because
 GitHub requires them all in `.github/workflows/` (no per-workflow subdirectory).
+`_release.yml` also lives there, but it is ci-internal — a change to it uses a
+non-releasing commit type (`ci:`/`chore:`) so it never bumps `workflows`.
 
 Consumers **pin by commit digest** with a `# <component>-vX.Y.Z` comment. The
 tag is what makes that opaque digest readable and lets Renovate propose the
@@ -34,49 +47,146 @@ bump — the [shared preset](https://github.com/jabrown93/.github/blob/main/reno
 carries a `customManager` that routes each ref to its component's tag stream.
 
 ```yaml
-# reusable workflow (job level)
-uses: jabrown93/ci/.github/workflows/<name>.yml@<sha> # workflows-v1.0.0
-
 # composite action (step level)
 uses: jabrown93/ci/actions/<name>@<sha> # <name>-v1.0.0
+
+# reusable workflow (job level)
+uses: jabrown93/ci/.github/workflows/<name>.yml@<sha> # workflows-v1.0.0
 ```
 
 Trigger events (`push`, `pull_request`, `schedule`, branch filters) and
-`concurrency` stay in the **caller** — a reusable workflow cannot declare them.
+`concurrency` stay in the **caller** — a reusable workflow cannot declare them,
+and a composite action cannot declare `on:`, `runs-on`, a matrix, or job-level
+`permissions`; the caller's job owns all of those.
 
 Each workflow/action file carries a header comment documenting its full inputs,
 secrets, and operational constraints; the tables below are a summary.
 
 ---
 
-## Reusable workflows
+## Composite actions
 
-### `node-build.yml` — lint + format + build + test a Node.js project
+Consumed at the **step** level. The caller's job supplies `runs-on`, any matrix,
+and — where the underlying tooling needs elevated scopes — `permissions`.
 
-Runs across a Node version matrix.
+### `generate-sbom` — CycloneDX SBOM for npm / maven / syft
+
+Generates the SBOM and uploads it as an artifact. Used by **both** the
+push-to-main `dt-sbom-upload.yml` caller and the advisory PR license check.
 
 | input | default |
 |---|---|
-| `node-versions` | `'["20.x", "22.x", "24.x"]'` (JSON array) |
-| `runs-on` | `ubuntu-latest` |
+| `ecosystem` | *(required)* `npm`, `maven`, or `syft` (filesystem scan) |
+| `sbom-path` | `sbom.cdx.json` |
+| `artifact-name` | `sbom` |
+| `node-version` | `'24'` (ecosystem `npm`) |
+| `cyclonedx-npm-version` | `4.2.1` (ecosystem `npm`) |
+| `java-version` | `'25'` (ecosystem `maven`) |
+| `java-distribution` | `corretto` (ecosystem `maven`) |
+
+**Always run this on a hosted runner.** `npm ci` and `mvn` execute untrusted
+dependency lifecycle scripts and build plugins that must never touch an
+in-cluster runner. The action does **not** check out the repo; the caller does.
+
+```yaml
+      - uses: actions/checkout@<sha> # v7.0.0
+      - uses: jabrown93/ci/actions/generate-sbom@<sha> # generate-sbom-v1.0.0
+        with:
+          ecosystem: maven
+          sbom-path: target/sbom.cdx.json
+```
+
+### `node-build` — lint + format + build + test a Node.js project
+
+Checks out the repo, then lint + `prettier --check` + build + test for **one**
+Node version. A composite action can't declare a matrix, so the **caller owns
+the version matrix** and `runs-on`.
+
+| input | default |
+|---|---|
+| `node-version` | `24.x` |
 
 ```yaml
 name: Build and Lint
 on: [push, pull_request]
 jobs:
   build:
-    uses: jabrown93/ci/.github/workflows/node-build.yml@<sha> # workflows-v1.0.0
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node-version: ['22.x', '24.x']
+    steps:
+      - uses: jabrown93/ci/actions/node-build@<sha> # node-build-v1.0.0
+        with:
+          node-version: ${{ matrix.node-version }}
 ```
 
-### `codeql.yml` — CodeQL advanced analysis (single language)
+### `codeql` — CodeQL advanced analysis (single language)
 
-Call once per language for multi-language repos.
+Checks out the repo, then runs CodeQL init + analyze. Call once per language for
+multi-language repos. The **caller's job must grant CodeQL's permissions**.
 
 | input | default |
 |---|---|
 | `language` | `javascript-typescript` |
 | `build-mode` | `none` |
-| `runs-on` | `ubuntu-latest` |
+
+```yaml
+name: CodeQL
+on: [push, pull_request]
+jobs:
+  analyze:
+    runs-on: ubuntu-latest
+    permissions:
+      security-events: write
+      packages: read
+      actions: read
+      contents: read
+    steps:
+      - uses: jabrown93/ci/actions/codeql@<sha> # codeql-v1.0.0
+        with:
+          language: javascript-typescript
+```
+
+### `stale` — close stale issues and PRs
+
+Wraps `actions/stale` with the shared defaults; every knob is overridable. The
+**caller supplies the `schedule` trigger and the permissions**.
+
+| input | default |
+|---|---|
+| `days-before-stale` | `'30'` |
+| `days-before-close` | `'7'` |
+| `stale-issue-label` | `stale` |
+| `stale-pr-label` | `no-pr-activity` |
+| `exempt-issue-labels` / `exempt-pr-labels` | `work-in-progress,disable-stale-bot,needs-triage` |
+
+(Plus the stale/close message inputs — see the action header.)
+
+```yaml
+name: Stale
+on:
+  schedule:
+    - cron: '0 0 * * *'
+jobs:
+  stale:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+      actions: write
+    steps:
+      - uses: jabrown93/ci/actions/stale@<sha> # stale-v1.0.0
+```
+
+---
+
+## Reusable workflows
+
+Consumed at the **job** level (`jobs.<id>.uses:`). These stay reusable workflows
+because they need what a composite action can't express: multiple dependent jobs
+and workflow-level OIDC/permissions.
 
 ### `docker-release.yml` — semantic-release + build/push/sign a multi-arch image
 
@@ -135,51 +245,6 @@ first, then hand it over as an artifact.
 > code in reach of the in-cluster runner. The caller repo must be in the
 > `dt-sbom-upload` role's allowlist and have an `arc-oss-<repo>` runner set.
 
-### `stale.yml` — close stale issues and PRs
-
-Every knob is overridable; the schedule trigger is defined by the caller.
-
-| input | default |
-|---|---|
-| `days-before-stale` | `'30'` |
-| `days-before-close` | `'7'` |
-| `stale-issue-label` | `stale` |
-| `stale-pr-label` | `no-pr-activity` |
-| `exempt-issue-labels` / `exempt-pr-labels` | `work-in-progress,disable-stale-bot,needs-triage` |
-
-(Plus the stale/close message inputs — see the workflow header.)
-
----
-
-## Composite actions
-
-### `generate-sbom` — CycloneDX SBOM for npm / maven / syft
-
-Generates the SBOM and uploads it as an artifact. Used by **both** the
-push-to-main `dt-sbom-upload.yml` caller and the advisory PR license check.
-
-| input | default |
-|---|---|
-| `ecosystem` | *(required)* `npm`, `maven`, or `syft` (filesystem scan) |
-| `sbom-path` | `sbom.cdx.json` |
-| `artifact-name` | `sbom` |
-| `node-version` | `'24'` (ecosystem `npm`) |
-| `cyclonedx-npm-version` | `4.2.1` (ecosystem `npm`) |
-| `java-version` | `'25'` (ecosystem `maven`) |
-| `java-distribution` | `corretto` (ecosystem `maven`) |
-
-**Always run this on a hosted runner.** `npm ci` and `mvn` execute untrusted
-dependency lifecycle scripts and build plugins that must never touch an
-in-cluster runner. The action does **not** check out the repo; the caller does.
-
-```yaml
-      - uses: actions/checkout@<sha> # v7.0.0
-      - uses: jabrown93/ci/actions/generate-sbom@<sha> # generate-sbom-v1.0.0
-        with:
-          ecosystem: maven
-          sbom-path: target/sbom.cdx.json
-```
-
 ---
 
 ## Releasing
@@ -197,5 +262,5 @@ publishes a GitHub Release. Nothing is versioned by hand.
 
 Renovate labels bumps to the third-party action SHAs pinned **inside** the
 reusable workflows / actions as `fix` (they change what consumers execute, so
-they ship); bumps to this repo's own `release.yml` tooling stay `chore` and do
+they ship); bumps to this repo's own `_release.yml` tooling stay `chore` and do
 not release. See [`renovate.json`](renovate.json).
