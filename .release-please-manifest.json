@@ -1,0 +1,4 @@
+{
+  ".github/workflows": "1.0.0",
+  "actions/generate-sbom": "1.0.0"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": [
+    "github>jabrown93/.github//renovate-config.json"
+  ],
+  "packageRules": [
+    {
+      "description": "The third-party action SHAs pinned inside the reusable workflows and composite actions ARE this repo's product: a bump changes what every consumer executes, so it must ship. Labelling it `fix` makes release-please cut a patch for the component whose files changed (release-please attributes by file path -- a bump to actions/generate-sbom releases generate-sbom, a bump inside a reusable workflow releases workflows). Everything the preset already classifies as chore (this repo's own tooling, lock-file maintenance) stays silent.",
+      "matchManagers": ["github-actions"],
+      "semanticCommitType": "fix"
+    },
+    {
+      "description": "Undo the rule above for release.yml, this repo's OWN release-please runner, which no consumer calls -- a bump to an action inside it changes nothing a consumer executes and must not cut a release. It lives under .github/workflows/, so without this override its bump would be attributed to the `workflows` component and release it. Composes with grouped branches: generateBranchConfig picks the highest-priority type among grouped upgrades (chore < ci < build < fix < feat), so a branch mixing a release.yml bump with a real reusable-workflow bump still releases as `fix`; only a release.yml-exclusive bump stays `chore` and silent. Deny-list the one non-reusable file rather than allow-list the reusable ones, so a newly added reusable workflow releases by default.",
+      "matchManagers": ["github-actions"],
+      "matchFileNames": [".github/workflows/release.yml"],
+      "semanticCommitType": "chore"
+    }
+  ]
+}

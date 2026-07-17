@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "separate-pull-requests": true,
+  "include-component-in-tag": true,
+  "packages": {
+    ".github/workflows": {
+      "release-type": "simple",
+      "component": "workflows"
+    },
+    "actions/generate-sbom": {
+      "release-type": "simple",
+      "component": "generate-sbom"
+    }
+  }
+}

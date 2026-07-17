@@ -1,0 +1,57 @@
+---
+# Versioning for THIS repo's components, from Conventional Commits.
+#
+# release-please (manifest mode) tracks a SEPARATE version per component -- the
+# reusable workflows share the `workflows` component, and each composite action
+# is its own component -- and cuts an independent tag + GitHub Release per
+# component (e.g. workflows-v1.2.0, generate-sbom-v1.0.0). release-please
+# attributes a commit to a component by the path of the files it changed; see
+# release-please-config.json and .release-please-manifest.json.
+#
+# It runs authenticated as a GitHub App, NOT the default GITHUB_TOKEN, because
+# the release PR's CHANGELOG/manifest commits must clear the `main` ruleset
+# (required signatures + required pull request). Commits made through the API as
+# a GitHub App are signed by GitHub, and the ruleset grants that app bypass, so
+# the release PR merges while ordinary contributors stay gated. This mirrors the
+# app-token pattern in docker-release.yml / npm-release.yml. The app needs
+# `contents: write` + `pull-requests: write` installation permissions on this repo.
+#
+# Consumers pin a component by commit digest with a `# <component>-vX.Y.Z`
+# comment; these releases create the tag that makes that comment readable and
+# lets Renovate propose the bump (see the shared preset's customManager).
+name: Release Please
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+# Serialize so two quick merges can't race release-please / tag creation.
+concurrency:
+  group: release-please
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: release-please
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the release commit + tag, create the GitHub Release
+      pull-requests: write # open and maintain the release PR
+    steps:
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.APP_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Release Please
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
