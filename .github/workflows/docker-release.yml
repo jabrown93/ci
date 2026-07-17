@@ -74,28 +74,22 @@ jobs:
       version: ${{ steps.semantic.outputs.new_release_version }}
       channel: ${{ steps.semantic.outputs.new_release_channel }}
     steps:
-      # Mint a token for the release GitHub App. semantic-release pushes the
-      # version-bump commit + tag AS this app, and the branch ruleset grants
-      # that app bypass so the unsigned bump commit clears required
-      # signatures / status checks while ordinary contributors stay gated.
-      - name: Generate app token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+      # Mint the release app token + check out the branch TIP (fetch-depth 0).
+      # semantic-release pushes the version-bump commit + tag AS this app, and
+      # the branch ruleset grants that app bypass so the unsigned bump commit
+      # clears required signatures / status checks while ordinary contributors
+      # stay gated. release-checkout also pulls the branch tip (not github.sha)
+      # so a queued run's push isn't rejected as non-fast-forward.
+      #
+      # Referenced by FULL pinned ref, not ./actions/release-checkout: a local
+      # `./` ref used from inside a reusable workflow resolves against the
+      # CALLER's checkout, not this repo, so it would not be found.
+      - name: Release checkout
+        id: rc
+        uses: jabrown93/ci/actions/release-checkout@425043903d3ab15ad3ef1ca341d5c7e3f3905c1b # release-checkout-v1.0.0
         with:
-          client-id: ${{ secrets.APP_ID }}
-          private-key: ${{ secrets.APP_PRIVATE_KEY }}
-
-      - name: Checkout
-        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with:
-          fetch-depth: 0 # full history + tags so semantic-release can find the last release
-          persist-credentials: true
-          token: ${{ steps.app-token.outputs.token }}
-          # Check out the current branch tip, not github.sha. With
-          # concurrency queueing, a queued run otherwise operates on its
-          # trigger SHA and its push is rejected as non-fast-forward once
-          # an earlier queued run has already pushed the bump commit.
-          ref: ${{ github.ref }}
+          app-id: ${{ secrets.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
       - name: Semantic Release
         id: semantic
@@ -105,7 +99,7 @@ jobs:
         env:
           # App token (not the default GITHUB_TOKEN) so the tag + GitHub
           # Release are created by the app the branch ruleset allows to bypass.
-          GITHUB_TOKEN: ${{ steps.app-token.outputs.token }}
+          GITHUB_TOKEN: ${{ steps.rc.outputs.token }}
           # Read by a consumer's .releaserc.js to promote suppressed fix(deps)
           # commits (routine dependency bumps) into a single patch release on
           # the caller's weekly schedule trigger, instead of on every push.
