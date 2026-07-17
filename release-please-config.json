@@ -22,6 +22,10 @@
     "actions/stale": {
       "release-type": "simple",
       "component": "stale"
+    },
+    "actions/release-checkout": {
+      "release-type": "simple",
+      "component": "release-checkout"
     }
   }
 }
