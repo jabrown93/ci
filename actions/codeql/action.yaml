@@ -1,0 +1,42 @@
+---
+# Composite action: CodeQL advanced analysis for a single language. Checks out
+# the repo, then runs CodeQL init + analyze. Multi-language repos call this once
+# per language (one job each, or a matrix the caller owns).
+#
+# The CALLER's job supplies runs-on and MUST grant the permissions CodeQL needs
+# (a composite action cannot declare job-level permissions):
+#   permissions:
+#     security-events: write   # required for all runs
+#     packages: read           # fetch internal/private CodeQL packs
+#     actions: read            # only required in private repositories
+#     contents: read
+name: CodeQL analysis
+description: >-
+  Check out the repo and run CodeQL init + analyze for a single language. The
+  caller's job supplies runs-on and the security-events/packages/actions/contents
+  permissions.
+inputs:
+  language:
+    description: CodeQL language (e.g. javascript-typescript, java-kotlin)
+    required: false
+    default: javascript-typescript
+  build-mode:
+    description: CodeQL build mode (none, autobuild, manual)
+    required: false
+    default: none
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      with:
+        languages: ${{ inputs.language }}
+        build-mode: ${{ inputs.build-mode }}
+
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@99df26d4f13ea111d4ec1a7dddef6063f76b97e9 # v4.37.0
+      with:
+        category: '/language:${{ inputs.language }}'
