@@ -2,22 +2,14 @@
 # Composite action: check a pull request's title and every commit in its
 # history against Conventional Commits (https://www.conventionalcommits.org).
 #
-# The title check wraps amannn/action-semantic-pull-request -- a normal JS
-# action, pinnable by commit SHA like every other third-party dependency in
-# this repo. No equivalent exists for the per-commit check: the community-
-# standard wagoid/commitlint-github-action is a Docker container action that
-# pulls a floating Docker Hub tag (`docker://wagoid/commitlint-github-action:
-# 6.2.1`), which this repo's pin-by-commit-digest convention can't express.
-# That check is a small bash script calling the GitHub API instead.
+# Title check wraps amannn/action-semantic-pull-request, pinnable by SHA like
+# any other dependency here. Commit check is a bash script instead, since the
+# community-standard wagoid/commitlint-github-action is a floating-tag Docker
+# action this repo's pin-by-digest convention can't express.
 #
-# The CALLER's job MUST trigger on pull_request with at least these types
-# (edited catches title-only edits, synchronize catches new commits pushed
-# after the PR was opened) and grant the read permission below:
-#   on:
-#     pull_request:
-#       types: [opened, reopened, edited, synchronize]
-#   permissions:
-#     pull-requests: read
+# Caller's job must trigger on pull_request (types: opened, reopened, edited,
+# synchronize -- edited catches title-only edits, synchronize catches new
+# commits) and grant `permissions: pull-requests: read`.
 name: Conventional commit check
 description: >-
   Check a pull request's title and every commit in its history against
