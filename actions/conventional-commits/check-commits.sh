@@ -29,18 +29,26 @@ is_valid_subject() {
 }
 
 fail=0
-# Capture into a variable rather than piping into the while loop via process
-# substitution: under `set -e`, a failing command inside `<(...)` does not
-# abort the script, so a transient gh api failure would silently read as
-# zero commits checked, zero failures found -- a false pass on the very
-# check meant to fail loud.
-commit_subjects=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --paginate --jq '.[].commit.message | split("\n")[0]')
-while IFS= read -r subject; do
+# Write to a temp file rather than capturing into a variable or piping into
+# the while loop via process substitution:
+# - command substitution strips ALL trailing newlines, which silently drops
+#   a final blank commit subject (an empty message on the last commit in the
+#   PR) along with the newline that would have delimited it;
+# - under `set -e`, a failing command inside `<(...)` does not abort the
+#   script, so a transient gh api failure would silently read as zero
+#   commits checked, zero failures found -- a false pass on the very check
+#   meant to fail loud.
+# Reading from a real file via `<` preserves every line, including a blank
+# trailing one, and lets `set -e` catch a failed gh api call normally.
+commits_file=$(mktemp)
+trap 'rm -f "$commits_file"' EXIT
+gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --paginate --jq '.[].commit.message | split("\n")[0]' >"$commits_file"
+while IFS= read -r subject || [[ -n "$subject" ]]; do
   if ! is_valid_subject "$subject"; then
     echo "::error::Commit does not follow Conventional Commits: \"$subject\""
     fail=1
   fi
-done <<<"$commit_subjects"
+done <"$commits_file"
 
 if [[ "$fail" -eq 1 ]]; then
   echo "Allowed types: $(tr '\n' ',' <<<"$TYPES" | sed 's/,$//')"
