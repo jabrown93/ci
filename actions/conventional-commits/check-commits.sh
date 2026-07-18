@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Inputs (env): TYPES (newline-delimited allowed types), GH_TOKEN, PR_NUMBER.
-# GITHUB_REPOSITORY is set by the Actions runner.
+# Inputs (env): TYPES (newline-delimited allowed types), GH_TOKEN, PR_NUMBER,
+# PR_COMMIT_COUNT. GITHUB_REPOSITORY is set by the Actions runner.
+
+# The "list commits on a pull request" endpoint caps out at 250 commits
+# regardless of --paginate (see GitHub's REST docs), so a PR past that count
+# would silently pass with commits beyond the cap left unchecked. Fail loud
+# instead -- rebasing/squashing to under the cap is the fix.
+if [[ "$PR_COMMIT_COUNT" -gt 250 ]]; then
+  echo "::error::PR has $PR_COMMIT_COUNT commits; the GitHub API only returns the first 250 on this endpoint, so not every commit can be checked. Squash or rebase to bring it under 250, or disable check-commits."
+  exit 1
+fi
 
 types_alt=$(grep -v '^[[:space:]]*$' <<<"$TYPES" | paste -sd '|')
 type_re="^(${types_alt})(\([-a-zA-Z0-9_/. ]+\))?!?: .+"
@@ -21,7 +30,6 @@ is_valid_subject() {
 
 fail=0
 while IFS= read -r subject; do
-  [[ -z "$subject" ]] && continue
   if ! is_valid_subject "$subject"; then
     echo "::error::Commit does not follow Conventional Commits: \"$subject\""
     fail=1

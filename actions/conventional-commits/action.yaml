@@ -43,7 +43,11 @@ runs:
   using: composite
   steps:
     - name: Check PR title
-      if: ${{ inputs.check-title == 'true' }}
+      # GitHub's default revert-PR title (`Revert "..."`) doesn't follow
+      # type(scope): subject either, and amannn/action-semantic-pull-request
+      # has no built-in allowance for it -- skip the check rather than force
+      # a rewrite, matching the same allowance in check-commits.sh.
+      if: ${{ inputs.check-title == 'true' && !startsWith(github.event.pull_request.title, 'Revert "') }}
       uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
       env:
         GITHUB_TOKEN: ${{ github.token }}
@@ -57,4 +61,5 @@ runs:
         GH_TOKEN: ${{ github.token }}
         TYPES: ${{ inputs.types }}
         PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
       run: bash "${{ github.action_path }}/check-commits.sh"
