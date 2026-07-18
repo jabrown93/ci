@@ -1,0 +1,80 @@
+---
+# Composite action: check a pull request's title and every commit in its
+# history against Conventional Commits (https://www.conventionalcommits.org).
+#
+# Title check wraps amannn/action-semantic-pull-request, pinnable by SHA like
+# any other dependency here. Commit check is a bash script instead, since the
+# community-standard wagoid/commitlint-github-action is a floating-tag Docker
+# action this repo's pin-by-digest convention can't express.
+#
+# Caller's job must trigger on pull_request (types: opened, reopened, edited,
+# synchronize -- edited catches title-only edits, synchronize catches new
+# commits) and grant `permissions: pull-requests: read`.
+name: Conventional commit check
+description: >-
+  Check a pull request's title and every commit in its history against
+  Conventional Commits. The caller triggers on pull_request and grants
+  pull-requests: read.
+inputs:
+  types:
+    description: Newline-delimited list of allowed Conventional Commit types
+    required: false
+    default: |
+      feat
+      fix
+      docs
+      style
+      refactor
+      perf
+      test
+      build
+      ci
+      chore
+      revert
+  check-title:
+    description: Validate the PR title
+    required: false
+    default: 'true'
+  check-commits:
+    description: Validate every commit's subject line in the PR
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    # Both checks run with continue-on-error so a bad title doesn't hide a
+    # bad commit message (or vice versa) behind a single failed run --
+    # the final step below fails the action once both have had a chance to
+    # report their own errors.
+    - name: Check PR title
+      id: title
+      continue-on-error: true
+      # GitHub's default revert-PR title (`Revert "..."`) doesn't follow
+      # type(scope): subject either, and amannn/action-semantic-pull-request
+      # has no built-in allowance for it -- skip the check rather than force
+      # a rewrite, matching the same allowance in check-commits.sh.
+      if: ${{ inputs.check-title == 'true' && !startsWith(github.event.pull_request.title, 'Revert "') }}
+      uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        types: ${{ inputs.types }}
+
+    - name: Check commit messages
+      id: commits
+      continue-on-error: true
+      if: ${{ inputs.check-commits == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TYPES: ${{ inputs.types }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
+      run: bash "${{ github.action_path }}/check-commits.sh"
+
+    - name: Fail if either check failed
+      if: ${{ always() && (steps.title.outcome == 'failure' || steps.commits.outcome == 'failure') }}
+      shell: bash
+      run: |
+        echo "::error::Conventional Commits check failed; see errors above."
+        exit 1

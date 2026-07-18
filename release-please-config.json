@@ -26,6 +26,10 @@
     "actions/release-checkout": {
       "release-type": "simple",
       "component": "release-checkout"
+    },
+    "actions/conventional-commits": {
+      "release-type": "simple",
+      "component": "conventional-commits"
     }
   }
 }
