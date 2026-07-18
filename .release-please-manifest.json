@@ -5,5 +5,6 @@
   "actions/codeql": "1.0.1",
   "actions/stale": "1.0.0",
   "actions/release-checkout": "1.0.0",
-  "actions/conventional-commits": "1.1.0"
+  "actions/conventional-commits": "1.1.0",
+  "actions/claude-review": "0.0.0"
 }

@@ -36,6 +36,7 @@ from the Conventional Commits merged to `main`:
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
 | `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
+| `claude-review` | the `claude-review` composite action | `claude-review-vX.Y.Z` |
 
 Composite actions are versioned independently of each other and of the
 workflows; the reusable workflows share the single `workflows` stream because
@@ -235,6 +236,51 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: jabrown93/ci/actions/conventional-commits@<sha> # conventional-commits-v1.0.0
+```
+
+### `claude-review` — AI code review on a pull request
+
+Wraps `anthropics/claude-code-action`, authenticated with a Claude Pro/Max
+**subscription OAuth token** (via `claude setup-token`) instead of a
+pay-as-you-go API key. Posts findings as inline PR review comments plus a
+progress-tracking top-level comment. Model is hardcoded to `claude-sonnet-5`
+with no `claude_args` passthrough — a deliberate token-cost guardrail, not a
+per-caller knob. The **caller supplies the `pull_request` trigger**, the
+`contents:read`/`pull-requests:write`/`id-token:write` permissions, the
+`CLAUDE_CODE_OAUTH_TOKEN` secret, and any author filtering (e.g. skipping
+Renovate PRs).
+
+The [Claude GitHub App](https://github.com/apps/claude) must also be installed
+on the consuming repo. This action does not pass `github_token`, so
+`claude-code-action` uses its default path: exchanging the job's OIDC token
+(hence `id-token: write`) for a Claude App installation token, which is also
+what makes comments appear as the app rather than `github-actions[bot]`.
+Without the app installed the run fails at that exchange, before any review is
+posted.
+
+| input | default |
+|---|---|
+| `claude-code-oauth-token` | *(required)* OAuth token from `claude setup-token` |
+| `prompt` | built-in code quality/security/performance/testing/docs review focus |
+| `track-progress` | `'true'` |
+
+```yaml
+name: Claude PR review
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+jobs:
+  review:
+    if: github.actor != 'renovate-jaredbrown-io[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: jabrown93/ci/actions/claude-review@<sha> # claude-review-v1.0.0
+        with:
+          claude-code-oauth-token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
 ```
 
 ---

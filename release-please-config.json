@@ -30,6 +30,10 @@
     "actions/conventional-commits": {
       "release-type": "simple",
       "component": "conventional-commits"
+    },
+    "actions/claude-review": {
+      "release-type": "simple",
+      "component": "claude-review"
     }
   }
 }

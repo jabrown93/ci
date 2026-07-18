@@ -1,0 +1,73 @@
+---
+# Composite action: AI code review on a pull request via
+# anthropics/claude-code-action, authenticated with a Claude Pro/Max
+# subscription OAuth token (not a pay-as-you-go API key). Posts findings as
+# inline PR review comments plus a progress-tracking top-level comment.
+#
+# Model is hardcoded to claude-sonnet-5 and there is no claude_args
+# passthrough -- this is the token-cost guardrail for this action. If a
+# consumer needs a different model or extra CLI flags, that's a deliberate
+# feat: change here, not a per-caller override.
+#
+# Caller's job must trigger on pull_request, grant
+# `permissions: {contents: read, pull-requests: write, id-token: write}`,
+# and supply a CLAUDE_CODE_OAUTH_TOKEN secret (generate with
+# `claude setup-token` on a Pro/Max account). Any author filtering (e.g.
+# skipping Renovate PRs) is the caller's job condition, not this action's.
+#
+# The Claude GitHub App (https://github.com/apps/claude) must be installed on
+# the consuming repo. This action deliberately does not pass `github_token`,
+# so claude-code-action takes its default path: exchange the job's OIDC token
+# (hence id-token: write) for a Claude App installation token, and post
+# comments as the app rather than github-actions[bot]. Without the app
+# installed the run fails at that exchange, before any review is posted.
+name: Claude PR review
+description: >-
+  Review a pull request with Claude Code (claude-sonnet-5, fixed) using
+  subscription OAuth auth. The caller triggers on pull_request, grants
+  contents:read/pull-requests:write/id-token:write, and supplies
+  CLAUDE_CODE_OAUTH_TOKEN.
+inputs:
+  claude-code-oauth-token:
+    description: OAuth token from `claude setup-token` (Claude Pro/Max subscription)
+    required: true
+  prompt:
+    description: Review focus instructions, appended after the repo/PR context
+    required: false
+    default: |
+      Perform a code review with the following focus areas:
+
+      1. Code quality: clean code principles, error handling, edge cases, readability
+      2. Security: potential vulnerabilities, input sanitization, auth/authz logic
+      3. Performance: bottlenecks, inefficient queries, resource leaks
+      4. Testing: coverage of the change, missing edge cases
+      5. Documentation: comments and docs kept in sync with the change
+
+      Provide detailed feedback using inline comments for specific issues. Use
+      top-level comments only for general observations.
+  track-progress:
+    description: Post a progress-tracking comment that updates as the review proceeds
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      with:
+        fetch-depth: 1
+        persist-credentials: false
+
+    - name: Claude PR review
+      uses: anthropics/claude-code-action@3553f84341b92da26052e28acf1aa898f9511f32 # v1
+      with:
+        claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
+        track_progress: ${{ inputs.track-progress }}
+        prompt: |
+          REPO: ${{ github.repository }}
+          PR NUMBER: ${{ github.event.pull_request.number }}
+
+          ${{ inputs.prompt }}
+        claude_args: |
+          --model claude-sonnet-5
+          --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
