@@ -42,7 +42,13 @@ inputs:
 runs:
   using: composite
   steps:
+    # Both checks run with continue-on-error so a bad title doesn't hide a
+    # bad commit message (or vice versa) behind a single failed run --
+    # the final step below fails the action once both have had a chance to
+    # report their own errors.
     - name: Check PR title
+      id: title
+      continue-on-error: true
       # GitHub's default revert-PR title (`Revert "..."`) doesn't follow
       # type(scope): subject either, and amannn/action-semantic-pull-request
       # has no built-in allowance for it -- skip the check rather than force
@@ -55,6 +61,8 @@ runs:
         types: ${{ inputs.types }}
 
     - name: Check commit messages
+      id: commits
+      continue-on-error: true
       if: ${{ inputs.check-commits == 'true' }}
       shell: bash
       env:
@@ -63,3 +71,10 @@ runs:
         PR_NUMBER: ${{ github.event.pull_request.number }}
         PR_COMMIT_COUNT: ${{ github.event.pull_request.commits }}
       run: bash "${{ github.action_path }}/check-commits.sh"
+
+    - name: Fail if either check failed
+      if: ${{ always() && (steps.title.outcome == 'failure' || steps.commits.outcome == 'failure') }}
+      shell: bash
+      run: |
+        echo "::error::Conventional Commits check failed; see errors above."
+        exit 1

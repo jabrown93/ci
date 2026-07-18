@@ -29,12 +29,18 @@ is_valid_subject() {
 }
 
 fail=0
+# Capture into a variable rather than piping into the while loop via process
+# substitution: under `set -e`, a failing command inside `<(...)` does not
+# abort the script, so a transient gh api failure would silently read as
+# zero commits checked, zero failures found -- a false pass on the very
+# check meant to fail loud.
+commit_subjects=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --paginate --jq '.[].commit.message | split("\n")[0]')
 while IFS= read -r subject; do
   if ! is_valid_subject "$subject"; then
     echo "::error::Commit does not follow Conventional Commits: \"$subject\""
     fail=1
   fi
-done < <(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/commits" --paginate --jq '.[].commit.message | split("\n")[0]')
+done <<<"$commit_subjects"
 
 if [[ "$fail" -eq 1 ]]; then
   echo "Allowed types: $(tr '\n' ',' <<<"$TYPES" | sed 's/,$//')"
