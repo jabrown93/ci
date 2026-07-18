@@ -14,7 +14,11 @@ if [[ "$PR_COMMIT_COUNT" -gt 250 ]]; then
 fi
 
 types_alt=$(grep -v '^[[:space:]]*$' <<<"$TYPES" | paste -sd '|')
-type_re="^(${types_alt})(\([-a-zA-Z0-9_/. ]+\))?!?: .+"
+# Scope char class matches amannn/action-semantic-pull-request's header
+# pattern (`\((.*)\)`, from conventional-changelog-conventionalcommits) --
+# any characters are allowed in the scope, so a title that passes the title
+# check can't fail the identical string here.
+type_re="^(${types_alt})(\(.*\))?!?: .+"
 # GitHub's default revert-PR title/commit and merge commits don't follow the
 # type(scope): subject shape -- allow them rather than force a rewrite.
 revert_re='^Revert "'
