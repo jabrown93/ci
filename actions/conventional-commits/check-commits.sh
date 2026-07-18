@@ -18,7 +18,7 @@ type_re="^(${types_alt})(\([-a-zA-Z0-9_/. ]+\))?!?: .+"
 # GitHub's default revert-PR title/commit and merge commits don't follow the
 # type(scope): subject shape -- allow them rather than force a rewrite.
 revert_re='^Revert "'
-merge_re='^Merge (branch|pull request) '
+merge_re='^Merge (branch|remote-tracking branch|pull request) '
 
 is_valid_subject() {
   local subject="$1"
