@@ -14,6 +14,13 @@
 # and supply a CLAUDE_CODE_OAUTH_TOKEN secret (generate with
 # `claude setup-token` on a Pro/Max account). Any author filtering (e.g.
 # skipping Renovate PRs) is the caller's job condition, not this action's.
+#
+# The Claude GitHub App (https://github.com/apps/claude) must be installed on
+# the consuming repo. This action deliberately does not pass `github_token`,
+# so claude-code-action takes its default path: exchange the job's OIDC token
+# (hence id-token: write) for a Claude App installation token, and post
+# comments as the app rather than github-actions[bot]. Without the app
+# installed the run fails at that exchange, before any review is posted.
 name: Claude PR review
 description: >-
   Review a pull request with Claude Code (claude-sonnet-5, fixed) using

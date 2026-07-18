@@ -250,6 +250,14 @@ per-caller knob. The **caller supplies the `pull_request` trigger**, the
 `CLAUDE_CODE_OAUTH_TOKEN` secret, and any author filtering (e.g. skipping
 Renovate PRs).
 
+The [Claude GitHub App](https://github.com/apps/claude) must also be installed
+on the consuming repo. This action does not pass `github_token`, so
+`claude-code-action` uses its default path: exchanging the job's OIDC token
+(hence `id-token: write`) for a Claude App installation token, which is also
+what makes comments appear as the app rather than `github-actions[bot]`.
+Without the app installed the run fails at that exchange, before any review is
+posted.
+
 | input | default |
 |---|---|
 | `claude-code-oauth-token` | *(required)* OAuth token from `claude setup-token` |
