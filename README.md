@@ -107,6 +107,9 @@ the version matrix** and `runs-on`.
 |---|---|
 | `node-version` | `24.x` |
 
+**Always run this on a hosted runner.** `npm install` executes untrusted
+dependency lifecycle scripts that must never touch an in-cluster runner.
+
 ```yaml
 name: Build and Lint
 on: [push, pull_request]

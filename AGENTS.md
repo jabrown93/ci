@@ -76,9 +76,9 @@ checkout, not this repo, and silently fails to be found.
 
 ## Security-sensitive constraints (do not relax without explicit discussion)
 
-- `generate-sbom` must always run on a **hosted** runner — `npm ci`/`mvn`
-  execute untrusted dependency lifecycle scripts/plugins that must never
-  touch an in-cluster runner.
+- `generate-sbom` and `node-build` must always run on a **hosted** runner —
+  `npm ci`/`npm install`/`mvn` execute untrusted dependency lifecycle
+  scripts/plugins that must never touch an in-cluster runner.
 - `dt-sbom-upload.yml` runs on an **in-cluster** runner and must never be
   wired to a `pull_request` trigger — that would expose fork-controlled code
   to the cluster. It authenticates via OIDC → OpenBao exchange, and derives
