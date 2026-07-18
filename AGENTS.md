@@ -46,6 +46,7 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `node-build` | `actions/node-build/` | `node-build-vX.Y.Z` |
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
 | `release-checkout` | `actions/release-checkout/` (internal, used only by the release workflows) | `release-checkout-vX.Y.Z` |
+| `claude-review` | `actions/claude-review/` | `claude-review-vX.Y.Z` |
 
 release-please attributes a commit to a component by the path of files it
 touches. Consequences that matter when editing:
