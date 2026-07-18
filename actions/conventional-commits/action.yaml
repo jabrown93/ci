@@ -1,0 +1,68 @@
+---
+# Composite action: check a pull request's title and every commit in its
+# history against Conventional Commits (https://www.conventionalcommits.org).
+#
+# The title check wraps amannn/action-semantic-pull-request -- a normal JS
+# action, pinnable by commit SHA like every other third-party dependency in
+# this repo. No equivalent exists for the per-commit check: the community-
+# standard wagoid/commitlint-github-action is a Docker container action that
+# pulls a floating Docker Hub tag (`docker://wagoid/commitlint-github-action:
+# 6.2.1`), which this repo's pin-by-commit-digest convention can't express.
+# That check is a small bash script calling the GitHub API instead.
+#
+# The CALLER's job MUST trigger on pull_request with at least these types
+# (edited catches title-only edits, synchronize catches new commits pushed
+# after the PR was opened) and grant the read permission below:
+#   on:
+#     pull_request:
+#       types: [opened, reopened, edited, synchronize]
+#   permissions:
+#     pull-requests: read
+name: Conventional commit check
+description: >-
+  Check a pull request's title and every commit in its history against
+  Conventional Commits. The caller triggers on pull_request and grants
+  pull-requests: read.
+inputs:
+  types:
+    description: Newline-delimited list of allowed Conventional Commit types
+    required: false
+    default: |
+      feat
+      fix
+      docs
+      style
+      refactor
+      perf
+      test
+      build
+      ci
+      chore
+      revert
+  check-title:
+    description: Validate the PR title
+    required: false
+    default: 'true'
+  check-commits:
+    description: Validate every commit's subject line in the PR
+    required: false
+    default: 'true'
+runs:
+  using: composite
+  steps:
+    - name: Check PR title
+      if: ${{ inputs.check-title == 'true' }}
+      uses: amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50 # v6.1.1
+      env:
+        GITHUB_TOKEN: ${{ github.token }}
+      with:
+        types: ${{ inputs.types }}
+
+    - name: Check commit messages
+      if: ${{ inputs.check-commits == 'true' }}
+      shell: bash
+      env:
+        GH_TOKEN: ${{ github.token }}
+        TYPES: ${{ inputs.types }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+      run: bash "${{ github.action_path }}/check-commits.sh"

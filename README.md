@@ -35,6 +35,7 @@ from the Conventional Commits merged to `main`:
 | `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
+| `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
 
 Composite actions are versioned independently of each other and of the
 workflows; the reusable workflows share the single `workflows` stream because
@@ -200,6 +201,38 @@ output: `token` — the minted installation token, for the release step.
 > (`jabrown93/ci/actions/release-checkout@<sha>`), **not** `./actions/release-checkout`
 > — a local `./` ref used from inside a reusable workflow resolves against the
 > **caller's** checkout, not this repo.
+
+### `conventional-commits` — enforce Conventional Commits on a PR's title and commits
+
+Checks the PR title and every commit's subject line against
+[Conventional Commits](https://www.conventionalcommits.org). The title check
+wraps [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request);
+the commit check is a small `gh api`-backed script (no equivalent SHA-pinnable
+action exists — the community-standard `wagoid/commitlint-github-action` is a
+Docker container action pulling a floating Docker Hub tag, which this repo's
+pin-by-commit-digest convention can't express). GitHub's default revert-PR
+title/commit (`Revert "..."`) and merge commits are allowed through both
+checks without a rewrite.
+
+| input | default |
+|---|---|
+| `types` | `feat,fix,docs,style,refactor,perf,test,build,ci,chore,revert` |
+| `check-title` | `'true'` |
+| `check-commits` | `'true'` |
+
+```yaml
+name: Conventional commits
+on:
+  pull_request:
+    types: [opened, reopened, edited, synchronize]
+permissions:
+  pull-requests: read
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jabrown93/ci/actions/conventional-commits@<sha> # conventional-commits-v1.0.0
+```
 
 ---
 
