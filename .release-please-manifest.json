@@ -4,7 +4,7 @@
   "actions/node-build": "1.0.1",
   "actions/codeql": "1.0.3",
   "actions/stale": "1.0.0",
-  "actions/release-checkout": "1.0.0",
+  "actions/release-checkout": "1.0.1",
   "actions/conventional-commits": "1.1.0",
   "actions/claude-review": "1.0.4"
 }
