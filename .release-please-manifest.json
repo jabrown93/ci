@@ -2,7 +2,7 @@
   ".github/workflows": "1.0.0",
   "actions/generate-sbom": "1.0.0",
   "actions/node-build": "1.0.2",
-  "actions/codeql": "1.0.3",
+  "actions/codeql": "1.0.4",
   "actions/stale": "1.0.0",
   "actions/release-checkout": "1.0.1",
   "actions/conventional-commits": "1.1.0",
