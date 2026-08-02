@@ -52,11 +52,16 @@ inputs:
 runs:
   using: composite
   steps:
+    # Checkout credentials must persist (the actions/checkout default):
+    # claude-code-action runs its own `git fetch origin <pr-branch>` against
+    # the https remote, which fails with "could not read Username" without
+    # them. Persisting exposes nothing new -- the action already holds a
+    # Claude App installation token (a superset of the caller token's
+    # permissions) in its environment for gh/MCP use.
     - name: Checkout repository
       uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         fetch-depth: 1
-        persist-credentials: false
 
     - name: Claude PR review
       uses: anthropics/claude-code-action@be7b93b1907a4abad570368f3c74b6fe3807510b # v1
