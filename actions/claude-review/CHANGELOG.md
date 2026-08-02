@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.8](https://github.com/jabrown93/ci/compare/claude-review-v1.0.7...claude-review-v1.0.8) (2026-08-02)
+
+
+### Bug Fixes
+
+* **claude-review:** restore persisted checkout credentials ([#40](https://github.com/jabrown93/ci/issues/40)) ([f26bd76](https://github.com/jabrown93/ci/commit/f26bd76cf7b3c92b8454c4b27abad93486531b2e))
+
 ## [1.0.7](https://github.com/jabrown93/ci/compare/claude-review-v1.0.6...claude-review-v1.0.7) (2026-07-25)
 
 
