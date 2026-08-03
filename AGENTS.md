@@ -44,6 +44,7 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `generate-sbom` | `actions/generate-sbom/` | `generate-sbom-vX.Y.Z` |
 | `codeql` | `actions/codeql/` | `codeql-vX.Y.Z` |
 | `node-build` | `actions/node-build/` | `node-build-vX.Y.Z` |
+| `go-build` | `actions/go-build/` | `go-build-vX.Y.Z` |
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
 | `release-checkout` | `actions/release-checkout/` (internal, used only by the release workflows) | `release-checkout-vX.Y.Z` |
 | `claude-review` | `actions/claude-review/` | `claude-review-vX.Y.Z` |
@@ -80,6 +81,9 @@ checkout, not this repo, and silently fails to be found.
 - `generate-sbom` and `node-build` must always run on a **hosted** runner —
   `npm ci`/`npm install`/`mvn` execute untrusted dependency lifecycle
   scripts/plugins that must never touch an in-cluster runner.
+- `go-build` must always run on a **hosted** runner too — Go resolves modules
+  without running dependency code, but `go test` compiles and executes the
+  checked-out repo, which is fork-controlled on a `pull_request`.
 - `dt-sbom-upload.yml` runs on an **in-cluster** runner and must never be
   wired to a `pull_request` trigger — that would expose fork-controlled code
   to the cluster. It authenticates via OIDC → OpenBao exchange, and derives

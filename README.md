@@ -33,6 +33,7 @@ from the Conventional Commits merged to `main`:
 | `generate-sbom` | the `generate-sbom` composite action | `generate-sbom-vX.Y.Z` |
 | `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
 | `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
+| `go-build` | the `go-build` composite action | `go-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
 | `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
@@ -126,6 +127,32 @@ jobs:
       - uses: jabrown93/ci/actions/node-build@<sha> # node-build-v1.0.0
         with:
           node-version: ${{ matrix.node-version }}
+```
+
+### `go-build` — build + vet + test + gofmt-check a Go module
+
+Checks out the repo, then `go build` + `go vet` + `go test` + a gofmt gate. The
+toolchain version comes from the consumer's `go.mod`, so a repo never pins its
+Go version in two places. Vendored modules work unmodified — the Go commands
+pick `-mod=vendor` themselves and the gofmt gate skips `./vendor`.
+
+| input | default |
+|---|---|
+| `go-version` | `''` (empty — read from `go-version-file`) |
+| `go-version-file` | `go.mod` |
+| `packages` | `./...` |
+
+**Always run this on a hosted runner.** On a fork `pull_request` the
+checked-out code is untrusted and `go test` executes it.
+
+```yaml
+name: CI
+on: [push, pull_request]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: jabrown93/ci/actions/go-build@<sha> # go-build-v1.0.0
 ```
 
 ### `codeql` — CodeQL advanced analysis (single language)
