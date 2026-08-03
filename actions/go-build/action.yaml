@@ -1,0 +1,80 @@
+---
+# Composite action: build + vet + test + gofmt-check a Go module. The Go
+# toolchain version comes from the consumer's own go.mod unless the caller
+# overrides it, so a repo never pins its Go version in two places.
+#
+# ALWAYS run this on a hosted runner. On a `pull_request` from a fork the
+# checked-out code is UNTRUSTED, and `go test` compiles and executes it; that
+# must never touch an in-cluster runner. Same rule as node-build/generate-sbom.
+# See github.com/jabrown93/homelab -> docs/dependency-track.md.
+#
+# A composite action cannot declare a matrix or runs-on, so the CALLER owns
+# both:
+#   jobs:
+#     build:
+#       runs-on: ubuntu-latest
+#       steps:
+#         - uses: jabrown93/ci/actions/go-build@<sha> # go-build-v1.0.0
+#
+# Vendored modules work unmodified: `go build`/`go vet`/`go test` select
+# -mod=vendor automatically when vendor/modules.txt agrees with go.mod, and the
+# gofmt gate skips ./vendor so third-party sources cannot fail the build.
+name: Go build
+description: >-
+  Check out the repo, then build, vet, test and gofmt-check a Go module. The
+  toolchain version is read from go.mod by default; the caller owns runs-on and
+  any matrix.
+inputs:
+  go-version:
+    description: >-
+      Go version to build against. Leave empty (the default) to use the
+      version declared in go-version-file. Set it only to build against a
+      version other than the module's own, e.g. from a caller-owned matrix.
+    required: false
+    default: ''
+  go-version-file:
+    description: File to read the Go version from when go-version is unset
+    required: false
+    default: go.mod
+  packages:
+    description: Package pattern passed to go build/vet/test
+    required: false
+    default: ./...
+runs:
+  using: composite
+  steps:
+    - name: Checkout repository
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+
+    - name: Set up Go
+      uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+      with:
+        go-version: ${{ inputs.go-version }}
+        go-version-file: ${{ inputs.go-version-file }}
+
+    - name: Build
+      shell: bash
+      run: go build ${{ inputs.packages }}
+
+    - name: Vet
+      shell: bash
+      run: go vet ${{ inputs.packages }}
+
+    - name: Test
+      shell: bash
+      run: go test ${{ inputs.packages }}
+
+    # gofmt exits 0 whether or not it finds anything, so the file list is the
+    # only signal. Enumerate files explicitly: passing a directory makes gofmt
+    # recurse into ./vendor, which no consumer owns.
+    - name: Check formatting
+      shell: bash
+      run: |
+        unformatted=$(find . -name '*.go' -not -path './vendor/*' -exec gofmt -l {} +)
+        if [ -n "$unformatted" ]; then
+          echo "::error::gofmt found unformatted files; run 'gofmt -w' on:"
+          echo "$unformatted"
+          exit 1
+        fi
