@@ -43,7 +43,7 @@ jobs:
       # not this repo, so it would not be found.
       - name: Release checkout
         id: rc
-        uses: jabrown93/ci/actions/release-checkout@425043903d3ab15ad3ef1ca341d5c7e3f3905c1b # release-checkout-v1.0.0
+        uses: jabrown93/ci/actions/release-checkout@e24efb41d2e9a9f32af4521567f59911f2bbf7f4 # release-checkout-v1.0.1
         with:
           app-id: ${{ secrets.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
