@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/jabrown93/ci/compare/codeql-v1.0.5...codeql-v1.0.6) (2026-08-09)
+
+
+### Bug Fixes
+
+* **deps:** update github/codeql-action action to v4.37.6 ([#52](https://github.com/jabrown93/ci/issues/52)) ([47d9f93](https://github.com/jabrown93/ci/commit/47d9f93b6f317d33a6e8f19fc149d8e05d7328fe))
+
 ## [1.0.5](https://github.com/jabrown93/ci/compare/codeql-v1.0.4...codeql-v1.0.5) (2026-08-03)
 
 
