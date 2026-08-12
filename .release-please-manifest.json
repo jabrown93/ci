@@ -6,6 +6,6 @@
   "actions/stale": "1.0.1",
   "actions/release-checkout": "1.0.1",
   "actions/conventional-commits": "1.1.0",
-  "actions/claude-review": "1.0.9",
+  "actions/claude-review": "1.0.10",
   "actions/go-build": "1.0.0"
 }
