@@ -1,0 +1,41 @@
+---
+# Composite action: expose release-commit.mjs -- Verified semantic-release
+# version-bump commits via GitHub's GraphQL createCommitOnBranch -- as
+# $RELEASE_COMMIT_SCRIPT, for a repo's .releaserc @semantic-release/exec
+# prepareCmd to call in place of @semantic-release/git:
+#
+#   node $RELEASE_COMMIT_SCRIPT --branch ${branch.name}
+#     --message 'chore(release): v${nextRelease.version} [skip ci]' -- <files>
+#
+# $RELEASE_COMMIT_SCRIPT is deliberately written WITHOUT braces in the
+# prepareCmd: @semantic-release/exec runs the command through a Lodash
+# template, which would evaluate ${RELEASE_COMMIT_SCRIPT} as JS and fail;
+# the bare form is left alone and expanded by the shell.
+#
+# Why an API commit at all: @semantic-release/git commits with local git, and
+# a CI bot has no signing key, so every chore(release) commit lands unsigned.
+# createCommitOnBranch commits are signed by GitHub and show as Verified,
+# attributed to the token's app identity. The script keeps the git plugin's
+# concurrency semantics (expectedHeadOid) and hard-resets the checkout so the
+# release tag semantic-release creates points at the API commit. It needs
+# GITHUB_TOKEN (or GH_TOKEN) and GITHUB_REPOSITORY in the release step's env,
+# both of which the npm-release/docker-release workflows already set.
+#
+# IMPORTANT: a reusable workflow must reference this action by its FULL pinned
+# ref (jabrown93/ci/actions/release-commit@<sha>), NOT `./actions/release-commit`
+# -- a local `./` ref used from inside a reusable workflow resolves against the
+# CALLER's checked-out repo, not this one, so it would not be found.
+name: Release commit script
+description: >-
+  Expose release-commit.mjs (Verified semantic-release version-bump commits
+  via the GitHub API) as $RELEASE_COMMIT_SCRIPT for a .releaserc exec
+  prepareCmd.
+runs:
+  using: composite
+  steps:
+    - name: Export RELEASE_COMMIT_SCRIPT
+      # The action directory persists for the whole job, so point at the file
+      # in place rather than copying it into the workspace, where it would
+      # dirty the release checkout.
+      shell: bash
+      run: echo "RELEASE_COMMIT_SCRIPT=${GITHUB_ACTION_PATH}/release-commit.mjs" >> "$GITHUB_ENV"

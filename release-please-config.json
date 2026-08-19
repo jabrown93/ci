@@ -38,6 +38,10 @@
     "actions/go-build": {
       "release-type": "simple",
       "component": "go-build"
+    },
+    "actions/release-commit": {
+      "release-type": "simple",
+      "component": "release-commit"
     }
   }
 }
