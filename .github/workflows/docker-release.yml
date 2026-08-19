@@ -91,6 +91,12 @@ jobs:
           app-id: ${{ secrets.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
+      # Exports RELEASE_COMMIT_SCRIPT for a .releaserc exec prepareCmd that
+      # creates the version-bump commit via the GitHub API (Verified) instead
+      # of @semantic-release/git. Unused by configs that don't reference it.
+      - name: Stage release-commit script
+        uses: jabrown93/ci/actions/release-commit@03c962b18c0808de575db8251919e34083513387 # release-commit-v1.0.0
+
       - name: Semantic Release
         id: semantic
         uses: cycjimmy/semantic-release-action@b12c8f6015dc215fe37bc154d4ad456dd3833c90 # v6.0.0
