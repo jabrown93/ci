@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/jabrown93/ci/compare/workflows-v1.1.0...workflows-v1.1.1) (2026-08-23)
+
+
+### Bug Fixes
+
+* **deps:** update docker/setup-buildx-action action to v4.3.0 ([#69](https://github.com/jabrown93/ci/issues/69)) ([e960c96](https://github.com/jabrown93/ci/commit/e960c960ec5c392deef7da486567cc631d8723d5))
+
 ## [1.1.0](https://github.com/jabrown93/ci/compare/workflows-v1.0.0...workflows-v1.1.0) (2026-08-19)
 
 
