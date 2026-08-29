@@ -1,5 +1,16 @@
 # Changelog
 
+## [2.0.0](https://github.com/jabrown93/ci/compare/workflows-v1.1.1...workflows-v2.0.0) (2026-08-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* dt-sbom-upload.yml is gone. Consumers publish SBOMs as release assets and attestations instead.
+
+### Features
+
+* remove the dt-sbom-upload reusable workflow ([21461f3](https://github.com/jabrown93/ci/commit/21461f36cbc300a52cd5c4b895aad4bf91f4f5ae))
+
 ## [1.1.1](https://github.com/jabrown93/ci/compare/workflows-v1.1.0...workflows-v1.1.1) (2026-08-23)
 
 
