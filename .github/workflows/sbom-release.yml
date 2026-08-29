@@ -84,6 +84,17 @@ jobs:
           # ahead of the JSON, so jq would get a mixed stream and this step would
           # die before the attestation. rm -rf first so a rerun cannot match the
           # previous attempt's tarball.
+          # `npm pack` runs prepack/prepare/postpack but NOT prepublishOnly, so a
+          # package generating publishable files there (a gitignored dist/) would be
+          # packed without them -- the asset and both attestations would describe an
+          # artifact npm never published. Fail loudly instead of attesting that.
+          # ponytail: guard, not a fix. To support prepublishOnly, fetch the published
+          # tarball (`npm pack <name>@<version>`) with a retry for registry latency.
+          if jq -e '.scripts.prepublishOnly' package.json >/dev/null 2>&1; then
+            echo "::error::package.json defines prepublishOnly; npm pack does not run it, so the packed tarball would not match what was published. Move that work to prepare/prepack, or extend this workflow to download the published tarball." >&2
+            exit 1
+          fi
+
           dest="${RUNNER_TEMP}/pack"
           rm -rf "${dest}"
           mkdir -p "${dest}"
