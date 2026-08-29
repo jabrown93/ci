@@ -14,10 +14,21 @@
 # consumer would need a different subject, so it can grow an input when one
 # actually exists.
 #
-# The caller owns the trigger and MUST use `release: [published]` --
-# `github.event.release.tag_name` is read directly for both the checkout ref and
-# the upload target. semantic-release publishes the release as the GitHub App
-# (not GITHUB_TOKEN), so the event does fire.
+# CALLER CONTRACT -- both halves are required, and neither can be fixed here:
+#
+#   1. Trigger MUST be `release: [published]`. `github.event.release.tag_name` is
+#      read directly for both the checkout ref and the upload target.
+#      semantic-release publishes the release as the GitHub App (not
+#      GITHUB_TOKEN), so the event does fire.
+#   2. Caller MUST grant all three permissions on the calling job:
+#        contents: write      # upload release assets
+#        id-token: write      # keyless signing of the attestations
+#        attestations: write  # write to the attestation store
+#      A reusable workflow can only narrow the caller's token, never widen it, so
+#      the job-level block below does NOT grant these -- with the usual read-only
+#      defaults the run dies at the first attestation.
+#
+# Packages using `prepublishOnly` are NOT supported: see the pack step.
 #
 # The tarball is packed from the release tag, not downloaded from npm: this runs
 # right after publish and the registry does not serve the version immediately.
@@ -87,12 +98,17 @@ jobs:
           # `npm pack` runs prepack/prepare/postpack but NOT prepublishOnly, so a
           # package generating publishable files there (a gitignored dist/) would be
           # packed without them -- the asset and both attestations would describe an
-          # artifact npm never published. Fail loudly instead of attesting that.
-          # ponytail: guard, not a fix. To support prepublishOnly, fetch the published
-          # tarball (`npm pack <name>@<version>`) with a retry for registry latency.
+          # artifact npm never published.
+          #
+          # Warn rather than fail: whether that matters depends on what the script
+          # does, and a prepublishOnly that only lints or runs tests is both common
+          # and harmless. Statically deciding which kind it is is not possible, and
+          # blocking a release over the harmless kind is the worse error.
+          # ponytail: heuristic warning. To support the file-generating kind, fetch
+          # the published tarball (`npm pack <name>@<version>`) with a retry for
+          # registry latency, and drop this check.
           if jq -e '.scripts.prepublishOnly' package.json >/dev/null 2>&1; then
-            echo "::error::package.json defines prepublishOnly; npm pack does not run it, so the packed tarball would not match what was published. Move that work to prepare/prepack, or extend this workflow to download the published tarball." >&2
-            exit 1
+            echo "::warning::package.json defines prepublishOnly, which npm pack does not run. If it generates publishable files, the packed tarball and both attestations will not match what npm published. Move that work to prepare/prepack, or extend this workflow to download the published tarball."
           fi
 
           dest="${RUNNER_TEMP}/pack"

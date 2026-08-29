@@ -407,7 +407,15 @@ repos get the equivalent from `docker-release.yml`, so this covers npm packages.
 | `node-version` | `'24'` |
 
 > The caller **must** trigger on `release: [published]` — the tag name is read
-> from `github.event.release` for both the checkout ref and the upload target.
+> from `github.event.release` for both the checkout ref and the upload target —
+> **and must grant all three permissions** shown below. A reusable workflow can
+> only narrow the caller's token, never widen it, so with the usual read-only
+> defaults the run dies at the first attestation.
+
+> Packages using `prepublishOnly` are only partly supported: `npm pack` does not
+> run that hook, so if it generates publishable files the tarball and both
+> attestations will not match what npm published. The workflow warns and
+> continues — move that work to `prepare`/`prepack` to be sure.
 
 ```yaml
 name: SBOM release
