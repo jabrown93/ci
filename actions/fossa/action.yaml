@@ -1,0 +1,41 @@
+---
+# Composite action: run a FOSSA licence/dependency scan of the checked-out repo.
+#
+# Centralized here so the fossa-action pin is bumped once for every consumer
+# instead of drifting across repos.
+#
+# The action does NOT check out the repo; the caller does, so the caller
+# controls fetch-depth and ref.
+#
+# FOSSA_API_KEY is a push-token: it identifies the project and is write-scoped,
+# so this must never run from a `pull_request` event on a public repo, where the
+# secret is unavailable to fork PRs anyway. Trigger on push, or on
+# `pull_request_target` only if the caller has thought about it.
+name: FOSSA scan
+description: >-
+  Run a FOSSA licence and dependency scan of the checked-out repo.
+inputs:
+  api-key:
+    description: FOSSA API key.
+    required: true
+  run-tests:
+    description: >-
+      Also run `fossa test`, failing the job on a policy violation. Off by
+      default: the scan is advisory, and `fossa test` blocks on FOSSA finishing
+      its server-side scan.
+    required: false
+    default: 'false'
+runs:
+  using: composite
+  steps:
+    - name: FOSSA analyze
+      uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
+      with:
+        api-key: ${{ inputs.api-key }}
+
+    - name: FOSSA test
+      if: inputs.run-tests == 'true'
+      uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
+      with:
+        api-key: ${{ inputs.api-key }}
+        run-tests: true
