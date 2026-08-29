@@ -14,6 +14,12 @@
 # consumer would need a different subject, so it can grow an input when one
 # actually exists.
 #
+# A reusable workflow rather than a composite action, despite being a single
+# job: only this form pins `runs-on`, and generate-sbom's `npm ci` runs
+# untrusted dependency lifecycle scripts that must stay on a hosted runner -- a
+# composite action would hand `runs-on` to the caller. Not the permissions:
+# per the caller contract below, the caller grants those either way.
+#
 # CALLER CONTRACT -- both halves are required, and neither can be fixed here:
 #
 #   1. Trigger MUST be `release: [published]`. `github.event.release.tag_name` is
@@ -56,6 +62,20 @@ jobs:
       id-token: write # keyless signing of the attestation
       attestations: write # write the attestation to the attestation store
     steps:
+      # Guards every step below: checkout treats an empty `ref` as unset, so a
+      # caller on the wrong trigger would pack the triggering ref and mint two
+      # attestations against the wrong tree before dying on the upload.
+      # Attestations cannot be retracted, so this has to fail first.
+      - name: Require a release event
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [ -n "${TAG}" ] || {
+            echo "::error::sbom-release needs release: [published]" >&2
+            exit 1
+          }
+
       - name: Checkout release tag
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:

@@ -17,8 +17,9 @@ YAML and reasoning about GitHub Actions semantics.
   the caller's job always owns those.
 - **Reusable workflows** — `.github/workflows/<name>.yml`, **bare** filename.
   Consumed via `uses:` at the **job** level. Reserved for what a composite
-  action structurally cannot do: multi-job pipelines and workflow-level
-  OIDC/permissions (`docker-release.yml`, `npm-release.yml`).
+  action structurally cannot do: multi-job pipelines, workflow-level
+  OIDC/permissions, and pinning `runs-on` to hold the hosted-runner constraint
+  (`docker-release.yml`, `npm-release.yml`, `sbom-release.yml`).
 - **Naming convention**: under `.github/workflows/`, a bare name is a shared
   reusable workflow for external use; a `_`-prefixed name (`_release.yml`) is
   this repo's own internal CI, not for consumers.
