@@ -9,7 +9,7 @@ workflows and composite actions, each versioned independently.
 - **Reusable workflows** — in [`.github/workflows/`](.github/workflows) with
   **bare** filenames, consumed via `uses:` at the **job** level. Reserved for
   the things that *cannot* be composite actions: multi-job pipelines and
-  workflow-level OIDC/permissions (the release + SBOM-upload flows).
+  workflow-level OIDC/permissions (the release flows).
 
 > **Naming tells you what a file is.** Under `.github/workflows/`, a **bare**
 > name (`docker-release.yml`) is a shared reusable workflow; a name prefixed
@@ -29,9 +29,10 @@ from the Conventional Commits merged to `main`:
 
 | Component | Contents | Tag |
 |---|---|---|
-| `workflows` | the reusable workflows — `docker-release`, `npm-release`, `dt-sbom-upload` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
+| `workflows` | the reusable workflows — `docker-release`, `npm-release` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
 | `generate-sbom` | the `generate-sbom` composite action | `generate-sbom-vX.Y.Z` |
 | `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
+| `fossa` | the `fossa` composite action | `fossa-vX.Y.Z` |
 | `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
 | `go-build` | the `go-build` composite action | `go-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
@@ -73,16 +74,19 @@ secrets, and operational constraints; the tables below are a summary.
 Consumed at the **step** level. The caller's job supplies `runs-on`, any matrix,
 and — where the underlying tooling needs elevated scopes — `permissions`.
 
-### `generate-sbom` — CycloneDX SBOM for npm / maven / syft
+### `generate-sbom` — CycloneDX + SPDX SBOMs for npm / maven / syft
 
-Generates the SBOM and uploads it as an artifact. Used by **both** the
-push-to-main `dt-sbom-upload.yml` caller and the advisory PR license check.
+Generates **both** SBOM formats and uploads them as one artifact. CycloneDX
+comes from the ecosystem-native generator (so it reports the resolved
+dependency graph); SPDX comes from a single syft filesystem scan of the tree
+those generators just installed.
 
 | input | default |
 |---|---|
 | `ecosystem` | *(required)* `npm`, `maven`, or `syft` (filesystem scan) |
 | `sbom-path` | `sbom.cdx.json` |
-| `artifact-name` | `sbom` |
+| `spdx-path` | `sbom.spdx.json` |
+| `artifact-name` | `sbom` (holds both files) |
 | `node-version` | `'24'` (ecosystem `npm`) |
 | `cyclonedx-npm-version` | `4.2.1` (ecosystem `npm`) |
 | `java-version` | `'25'` (ecosystem `maven`) |
@@ -98,6 +102,26 @@ in-cluster runner. The action does **not** check out the repo; the caller does.
         with:
           ecosystem: maven
           sbom-path: target/sbom.cdx.json
+```
+
+### `fossa` — FOSSA licence and dependency scan
+
+Wraps `fossas/fossa-action` so its pin is bumped once here instead of drifting
+across consumers. Does **not** check out the repo; the caller does.
+
+| input | default |
+|---|---|
+| `api-key` | *(required)* FOSSA API key |
+| `run-tests` | `'false'` (set `'true'` to fail the job on a policy violation) |
+
+> `FOSSA_API_KEY` is write-scoped, so never wire this to a `pull_request` event
+> on a public repo.
+
+```yaml
+      - uses: actions/checkout@<sha> # v7.0.1
+      - uses: jabrown93/ci/actions/fossa@<sha> # fossa-v1.0.0
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
 ```
 
 ### `node-build` — lint + format + build + test a Node.js project
@@ -355,25 +379,6 @@ Authenticates as a GitHub App and publishes to npm via OIDC trusted publishing.
 > entry-point filename, so the caller workflow must stay named `release.yaml`/
 > `release.yml` (whatever is registered on npmjs.org) and trigger on push to the
 > release branches.
-
-### `dt-sbom-upload.yml` — upload a CycloneDX SBOM to Dependency-Track
-
-Runs on an in-cluster runner and POSTs an SBOM artifact to the homelab
-Dependency-Track instance, exchanging the run's OIDC token for the DT key via
-OpenBao. Generate the SBOM on a hosted runner with the `generate-sbom` action
-first, then hand it over as an artifact.
-
-| input | default |
-|---|---|
-| `runs-on` | *(required)* in-cluster runner label, e.g. `arc-oss-homebridge-onkyo` |
-| `artifact-name` | `sbom` |
-| `project-name` | `''` (defaults to `github.com/<owner>/<repo>`) |
-| `project-version` | `''` (defaults to the caller's commit SHA) |
-| `is-latest` | `'true'` |
-
-> **Never** call this from a `pull_request` event — it would put fork-controlled
-> code in reach of the in-cluster runner. The caller repo must be in the
-> `dt-sbom-upload` role's allowlist and have an `arc-oss-<repo>` runner set.
 
 ---
 

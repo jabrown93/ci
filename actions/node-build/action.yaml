@@ -5,7 +5,7 @@
 #
 # ALWAYS run this on a hosted runner. `npm install` executes dependency
 # lifecycle scripts; that code is UNTRUSTED and must never touch an
-# in-cluster runner. See github.com/jabrown93/homelab -> docs/dependency-track.md.
+# in-cluster runner.
 #
 # A composite action cannot declare a matrix, so the CALLER owns the version
 # matrix and runs-on:

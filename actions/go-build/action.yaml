@@ -6,7 +6,6 @@
 # ALWAYS run this on a hosted runner. On a `pull_request` from a fork the
 # checked-out code is UNTRUSTED, and `go test` compiles and executes it; that
 # must never touch an in-cluster runner. Same rule as node-build/generate-sbom.
-# See github.com/jabrown93/homelab -> docs/dependency-track.md.
 #
 # A composite action cannot declare a matrix or runs-on, so the CALLER owns
 # both:

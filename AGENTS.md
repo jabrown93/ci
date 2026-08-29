@@ -18,8 +18,7 @@ YAML and reasoning about GitHub Actions semantics.
 - **Reusable workflows** — `.github/workflows/<name>.yml`, **bare** filename.
   Consumed via `uses:` at the **job** level. Reserved for what a composite
   action structurally cannot do: multi-job pipelines and workflow-level
-  OIDC/permissions (`docker-release.yml`, `npm-release.yml`,
-  `dt-sbom-upload.yml`).
+  OIDC/permissions (`docker-release.yml`, `npm-release.yml`).
 - **Naming convention**: under `.github/workflows/`, a bare name is a shared
   reusable workflow for external use; a `_`-prefixed name (`_release.yml`) is
   this repo's own internal CI, not for consumers.
@@ -43,6 +42,7 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `workflows` | `.github/workflows/` (all reusable workflows share one stream — GitHub requires them flat in one dir) | `workflows-vX.Y.Z` |
 | `generate-sbom` | `actions/generate-sbom/` | `generate-sbom-vX.Y.Z` |
 | `codeql` | `actions/codeql/` | `codeql-vX.Y.Z` |
+| `fossa` | `actions/fossa/` | `fossa-vX.Y.Z` |
 | `node-build` | `actions/node-build/` | `node-build-vX.Y.Z` |
 | `go-build` | `actions/go-build/` | `go-build-vX.Y.Z` |
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
@@ -84,11 +84,9 @@ checkout, not this repo, and silently fails to be found.
 - `go-build` must always run on a **hosted** runner too — Go resolves modules
   without running dependency code, but `go test` compiles and executes the
   checked-out repo, which is fork-controlled on a `pull_request`.
-- `dt-sbom-upload.yml` runs on an **in-cluster** runner and must never be
-  wired to a `pull_request` trigger — that would expose fork-controlled code
-  to the cluster. It authenticates via OIDC → OpenBao exchange, and derives
-  project identity from trusted GitHub context (`github.repository`/`github.sha`),
-  never from values the SBOM-generating job produced.
+- `fossa`'s API key is write-scoped — it identifies and updates the FOSSA
+  project — so no consumer may wire it to a `pull_request` event on a public
+  repo.
 - The release workflows authenticate as a GitHub App (via `release-checkout`),
   not the default `GITHUB_TOKEN`, so the release commit/tag/PR can clear the
   `main` branch ruleset (required signatures + required PR) through the app's
