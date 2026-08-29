@@ -1,27 +1,33 @@
 ---
-# Composite action: generate a CycloneDX SBOM of the checked-out repo's resolved
-# dependencies and upload it as a workflow artifact.
+# Composite action: generate CycloneDX AND SPDX SBOMs of the checked-out repo's
+# resolved dependencies and upload both as one workflow artifact.
 #
-# Used by BOTH halves of the Dependency-Track setup -- the push-to-main SBOM
-# upload (dt-sbom-upload.yml's caller) and the advisory PR license check -- which
-# need an identical SBOM and differ only in what they do with it. Each OSS repo
-# previously inlined these same steps twice.
+# Two formats because consumers of an SBOM are split: CycloneDX is what the
+# vulnerability/licence tooling reads, SPDX is what most compliance consumers
+# and GitHub's own dependency surface expect. Emitting both here means a caller
+# never has to run two generators over the same tree.
 #
 # ALWAYS run this on a hosted runner. `npm ci` and `mvn` execute dependency
-# lifecycle scripts and build plugins; that code is UNTRUSTED and must never
-# touch an in-cluster runner. See github.com/jabrown93/homelab ->
-# docs/dependency-track.md.
+# lifecycle scripts and build plugins; that code is UNTRUSTED.
 #
 # The caller checks out the repo first, so it controls fetch-depth.
 #
-# The artifact always holds sbom.cdx.json at its ROOT: upload-artifact flattens a
-# single-file path to its basename, so Maven's target/sbom.cdx.json still arrives
-# as sbom.cdx.json for the consumer. Consumers therefore never parameterize the
-# filename -- only this generator knows where the SBOM was written.
-name: Generate CycloneDX SBOM
+# The artifact always holds sbom.cdx.json and sbom.spdx.json at its ROOT:
+# upload-artifact flattens each single-file path to its basename, so Maven's
+# target/sbom.cdx.json still arrives as sbom.cdx.json for the consumer.
+# Consumers therefore never parameterize the filenames -- only this generator
+# knows where the SBOMs were written.
+#
+# The CycloneDX half is ecosystem-native (cyclonedx-npm, cyclonedx-maven) so it
+# reports the RESOLVED dependency graph. The SPDX half is a single syft
+# filesystem scan for every ecosystem: syft reads the same installed tree that
+# the ecosystem step just materialized, and one step beats three near-identical
+# ones. It therefore runs AFTER the ecosystem install steps, never before.
+name: Generate CycloneDX and SPDX SBOMs
 description: >-
-  Generate a CycloneDX SBOM of the checked-out repo's resolved dependencies
-  (npm, maven, or a syft filesystem scan) and upload it as a workflow artifact.
+  Generate CycloneDX and SPDX SBOMs of the checked-out repo's resolved
+  dependencies (npm, maven, or a syft filesystem scan) and upload both as a
+  workflow artifact.
 inputs:
   ecosystem:
     description: 'Dependency ecosystem: npm, maven, or syft (filesystem scan).'
@@ -34,8 +40,15 @@ inputs:
       not something this action can infer.
     required: false
     default: sbom.cdx.json
+  spdx-path:
+    description: >-
+      Path the SPDX SBOM is written to. Unlike sbom-path this is always produced
+      by the same syft scan regardless of ecosystem, so the default rarely needs
+      overriding.
+    required: false
+    default: sbom.spdx.json
   artifact-name:
-    description: Name of the uploaded artifact.
+    description: Name of the uploaded artifact (holds both SBOMs).
     required: false
     default: sbom
   node-version:
@@ -127,9 +140,21 @@ runs:
         # the step below owns the upload so the name is stable for consumers.
         upload-artifact: false
 
+    - name: Generate SPDX SBOM
+      uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+      with:
+        path: .
+        format: spdx-json
+        output-file: ${{ inputs.spdx-path }}
+        # This action uploads its own artifact under a generated name by default;
+        # the step below owns the upload so the name is stable for consumers.
+        upload-artifact: false
+
     - name: Upload SBOM artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.artifact-name }}
         if-no-files-found: error
-        path: ${{ inputs.sbom-path }}
+        path: |
+          ${{ inputs.sbom-path }}
+          ${{ inputs.spdx-path }}
