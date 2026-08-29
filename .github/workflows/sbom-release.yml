@@ -60,6 +60,11 @@ jobs:
         with:
           ecosystem: npm
           node-version: ${{ inputs.node-version }}
+          # Per-attempt name: artifacts are immutable within a run, so
+          # "re-run failed jobs" would 409 on the previous attempt's `sbom`
+          # before reaching the --clobber upload below. The artifact is a
+          # byproduct here -- the release assets are the deliverable.
+          artifact-name: sbom-${{ github.run_attempt }}
 
       - name: Pack the release tarball
         id: pack
