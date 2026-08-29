@@ -353,6 +353,16 @@ Two jobs (`release` → `image`) so a build failure never strands a
 tagged-but-imageless release. Authenticates as a GitHub App, then builds,
 pushes, and keyless-signs a multi-arch image to GHCR.
 
+The image ends up with **both** SBOM formats attached as OCI referrers: SPDX
+from buildx (`sbom: true`) and CycloneDX from a syft scan attested with cosign.
+BuildKit's SBOM attestation is SPDX-only, so CycloneDX needs the second pass.
+Retrieve them with:
+
+```sh
+docker buildx imagetools inspect <image>@<digest> --format '{{json .SBOM}}'   # SPDX
+cosign download attestation --predicate-type cyclonedx <image>@<digest>       # CycloneDX
+```
+
 | input | default |
 |---|---|
 | `image` | *(required)* e.g. `ghcr.io/jabrown93/crosswatch` |
