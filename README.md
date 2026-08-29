@@ -76,10 +76,15 @@ and — where the underlying tooling needs elevated scopes — `permissions`.
 
 ### `generate-sbom` — CycloneDX + SPDX SBOMs for npm / maven / syft
 
-Generates **both** SBOM formats and uploads them as one artifact. CycloneDX
-comes from the ecosystem-native generator (so it reports the resolved
-dependency graph); SPDX comes from a single syft filesystem scan of the tree
-those generators just installed.
+Generates **both** SBOM formats and uploads them as one artifact, each at the
+artifact root. CycloneDX comes from the ecosystem-native generator (so it
+reports the resolved dependency graph); SPDX comes from a single syft
+filesystem scan of the tree those generators just installed.
+
+> SPDX fidelity is ecosystem-dependent. `npm` gets the resolved tree from
+> `node_modules`, but `cyclonedx:makeAggregateBom` never packages, so a `maven`
+> run leaves no jars for syft and its SPDX covers only pom-declared
+> dependencies — use the CycloneDX output for maven dependency analysis.
 
 | input | default |
 |---|---|
