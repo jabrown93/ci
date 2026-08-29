@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.0](https://github.com/jabrown93/ci/compare/workflows-v2.0.0...workflows-v2.1.0) (2026-08-29)
+
+
+### Features
+
+* add a sbom-release reusable workflow for npm packages ([#83](https://github.com/jabrown93/ci/issues/83)) ([53321ff](https://github.com/jabrown93/ci/commit/53321ffe51499e2f54b58880adc3bb7d6911e8ac))
+* attach a CycloneDX SBOM alongside the SPDX one ([#84](https://github.com/jabrown93/ci/issues/84)) ([e4b334a](https://github.com/jabrown93/ci/commit/e4b334a6518011b5c0c433bd9a5437c9a7a06990))
+
 ## [2.0.0](https://github.com/jabrown93/ci/compare/workflows-v1.1.1...workflows-v2.0.0) (2026-08-29)
 
 
