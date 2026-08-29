@@ -15,6 +15,10 @@
       "release-type": "simple",
       "component": "codeql"
     },
+    "actions/fossa": {
+      "release-type": "simple",
+      "component": "fossa"
+    },
     "actions/node-build": {
       "release-type": "simple",
       "component": "node-build"
