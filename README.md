@@ -29,7 +29,7 @@ from the Conventional Commits merged to `main`:
 
 | Component | Contents | Tag |
 |---|---|---|
-| `workflows` | the reusable workflows — `docker-release`, `npm-release` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
+| `workflows` | the reusable workflows — `docker-release`, `npm-release`, `sbom-release` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
 | `generate-sbom` | the `generate-sbom` composite action | `generate-sbom-vX.Y.Z` |
 | `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
 | `fossa` | the `fossa` composite action | `fossa-vX.Y.Z` |
@@ -394,6 +394,53 @@ Authenticates as a GitHub App and publishes to npm via OIDC trusted publishing.
 > entry-point filename, so the caller workflow must stay named `release.yaml`/
 > `release.yml` (whatever is registered on npmjs.org) and trigger on push to the
 > release branches.
+
+### `sbom-release.yml` — SBOMs as release assets + an attestation on the tarball
+
+Generates CycloneDX + SPDX SBOMs for a published npm release, attests **both**
+to the packed tarball, and uploads all three as release assets. This is the
+release-artifact half of what Dependency-Track used to hold centrally; image
+repos get the equivalent from `docker-release.yml`, so this covers npm packages.
+
+| input | default |
+|---|---|
+| `node-version` | `'24'` |
+
+> The caller **must** trigger on `release: [published]` — the tag name is read
+> from `github.event.release` for both the checkout ref and the upload target —
+> **and must grant all three permissions** shown below. A reusable workflow can
+> only narrow the caller's token, never widen it, so with the usual read-only
+> defaults the run dies at the first attestation. The job fails on its first
+> step if the tag name is empty, so a miswired caller cannot mint attestations
+> against the wrong tree.
+
+> Packages using `prepublishOnly` are only partly supported: `npm pack` does not
+> run that hook, so if it generates publishable files the tarball and both
+> attestations will not match what npm published. The workflow warns and
+> continues — move that work to `prepare`/`prepack` to be sure.
+
+The tarball is packed from the tag, not downloaded from npm, so it matches the
+published tarball byte-for-byte only if the build is deterministic —
+`prepack`/`prepare` rerun here. `npm-release.yml` publishes with npm provenance,
+so a digest compared against npm's can differ for that reason alone.
+
+The SBOMs cover the dev+prod dependency tree, not the package's runtime closure:
+`generate-sbom` runs plain `npm ci` and does not pass `--omit dev`. Dev-only
+CVEs will therefore read as affecting the published package.
+
+```yaml
+name: SBOM release
+on:
+  release:
+    types: [published]
+jobs:
+  sbom:
+    uses: jabrown93/ci/.github/workflows/sbom-release.yml@<sha> # workflows-vX.Y.Z
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+```
 
 ---
 

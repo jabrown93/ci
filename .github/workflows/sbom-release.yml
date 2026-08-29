@@ -1,0 +1,176 @@
+---
+# Reusable workflow: on a published GitHub Release of an npm package, generate
+# CycloneDX + SPDX SBOMs, attest both to the packed tarball, and upload all
+# three as release assets.
+#
+# This is the release-artifact half of what Dependency-Track used to provide.
+# DT held every project's SBOM centrally and answered "what is in this version";
+# with it decommissioned the SBOM has to travel with the artifact instead. Image
+# repos already get that from buildx (`sbom: true` attaches an OCI referrer), so
+# this workflow exists for the one shape buildx cannot cover: npm packages.
+#
+# npm-only on purpose. The attestation subject is the `npm pack` tarball, and
+# `ecosystem: npm` is hardcoded rather than plumbed through -- a maven or syft
+# consumer would need a different subject, so it can grow an input when one
+# actually exists.
+#
+# A reusable workflow rather than a composite action, despite being a single
+# job: only this form pins `runs-on`, and generate-sbom's `npm ci` runs
+# untrusted dependency lifecycle scripts that must stay on a hosted runner -- a
+# composite action would hand `runs-on` to the caller. Not the permissions:
+# per the caller contract below, the caller grants those either way.
+#
+# CALLER CONTRACT -- both halves are required, and neither can be fixed here:
+#
+#   1. Trigger MUST be `release: [published]`. `github.event.release.tag_name` is
+#      read directly for both the checkout ref and the upload target.
+#      semantic-release publishes the release as the GitHub App (not
+#      GITHUB_TOKEN), so the event does fire.
+#   2. Caller MUST grant all three permissions on the calling job:
+#        contents: write      # upload release assets
+#        id-token: write      # keyless signing of the attestations
+#        attestations: write  # write to the attestation store
+#      A reusable workflow can only narrow the caller's token, never widen it, so
+#      the job-level block below does NOT grant these -- with the usual read-only
+#      defaults the run dies at the first attestation.
+#
+# Packages using `prepublishOnly` are NOT supported: see the pack step.
+#
+# The tarball is packed from the release tag, not downloaded from npm: this runs
+# right after publish and the registry does not serve the version immediately.
+# It is the same tree `npm publish` packed, so the attestation describes what was
+# published -- but packing reruns prepack/prepare, so byte-identity holds only
+# for a deterministic build. Switch to downloading the published tarball if that
+# ever has to be exact.
+name: SBOM release
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version used to install dependencies and pack.
+        required: false
+        type: string
+        default: '24'
+
+jobs:
+  sbom:
+    name: SBOM release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload release assets
+      id-token: write # keyless signing of the attestation
+      attestations: write # write the attestation to the attestation store
+    steps:
+      # Guards every step below: checkout treats an empty `ref` as unset, so a
+      # caller on the wrong trigger would pack the triggering ref and mint two
+      # attestations against the wrong tree before dying on the upload.
+      # Attestations cannot be retracted, so this has to fail first.
+      - name: Require a release event
+        env:
+          TAG: ${{ github.event.release.tag_name }}
+        run: |
+          set -euo pipefail
+          [ -n "${TAG}" ] || {
+            echo "::error::sbom-release needs release: [published]" >&2
+            exit 1
+          }
+
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      # Runs `npm ci`, so it also leaves node_modules and the Node toolchain in
+      # place for the `npm pack` step below.
+      #
+      # Referenced by FULL pinned ref, not ./actions/generate-sbom: a local `./`
+      # ref used from inside a reusable workflow resolves against the CALLER's
+      # checkout, not this repo, so it would not be found.
+      - name: Generate SBOMs
+        uses: jabrown93/ci/actions/generate-sbom@3971b21284e5ba160483f1d6c4b3dc48c502e9ea # generate-sbom-v1.1.0
+        with:
+          ecosystem: npm
+          node-version: ${{ inputs.node-version }}
+          # Per-attempt name: artifacts are immutable within a run, so
+          # "re-run failed jobs" would 409 on the previous attempt's `sbom`
+          # before reaching the --clobber upload below. The artifact is a
+          # byproduct here -- the release assets are the deliverable.
+          artifact-name: sbom-${{ github.run_attempt }}
+          # Written outside the package directory, NOT to the repo root. A
+          # package without a `files` allowlist or `.npmignore` defaults to
+          # `["*"]`, so root-level SBOMs would be packed into the tarball below --
+          # making the uploaded asset differ from what npm published, and binding
+          # each attestation to a tarball containing its own SBOM.
+          sbom-path: ${{ runner.temp }}/sbom.cdx.json
+          spdx-path: ${{ runner.temp }}/sbom.spdx.json
+
+      - name: Pack the release tarball
+        id: pack
+        run: |
+          set -euo pipefail
+          # Pack into a clean directory and glob it, rather than parsing
+          # `npm pack --json`: prepack/prepare/postpack hooks write to stdout
+          # ahead of the JSON, so jq would get a mixed stream and this step would
+          # die before the attestation. rm -rf first so a rerun cannot match the
+          # previous attempt's tarball.
+          # `npm pack` runs prepack/prepare/postpack but NOT prepublishOnly, so a
+          # package generating publishable files there (a gitignored dist/) would be
+          # packed without them -- the asset and both attestations would describe an
+          # artifact npm never published.
+          #
+          # Warn rather than fail: whether that matters depends on what the script
+          # does, and a prepublishOnly that only lints or runs tests is both common
+          # and harmless. Statically deciding which kind it is is not possible, and
+          # blocking a release over the harmless kind is the worse error.
+          # ponytail: heuristic warning. To support the file-generating kind, fetch
+          # the published tarball (`npm pack <name>@<version>`) with a retry for
+          # registry latency, and drop this check.
+          if jq -e '.scripts.prepublishOnly' package.json >/dev/null 2>&1; then
+            echo "::warning::package.json defines prepublishOnly, which npm pack does not run. If it generates publishable files, the packed tarball and both attestations will not match what npm published. Move that work to prepare/prepack, or extend this workflow to download the published tarball."
+          fi
+
+          dest="${RUNNER_TEMP}/pack"
+          rm -rf "${dest}"
+          mkdir -p "${dest}"
+          npm pack --pack-destination "${dest}" >/dev/null
+          tarball="$(find "${dest}" -maxdepth 1 -name '*.tgz')"
+          [ -f "${tarball}" ] || {
+            echo "::error::npm pack produced no single tarball in ${dest}" >&2
+            exit 1
+          }
+          echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
+
+      # Both formats, one subject: two attestations against the same tarball.
+      # SPDX is what GitHub's attestation surface renders; CycloneDX is what the
+      # dependency/licence tooling reads, and it is the ecosystem-native half
+      # (cyclonedx-npm resolves the real dependency graph, where the SPDX half is
+      # a syft scan of what `npm ci` installed).
+      - name: Attest the SPDX SBOM to the tarball
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: ${{ runner.temp }}/sbom/sbom.spdx.json
+
+      - name: Attest the CycloneDX SBOM to the tarball
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: ${{ runner.temp }}/sbom/sbom.cdx.json
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          SBOM_DIR: ${{ runner.temp }}/sbom
+        run: |
+          set -euo pipefail
+          # --clobber so a re-run of a failed job replaces the assets it already
+          # uploaded instead of failing on the name collision.
+          gh release upload "${TAG}" \
+            "${TARBALL}" \
+            "${SBOM_DIR}/sbom.cdx.json" \
+            "${SBOM_DIR}/sbom.spdx.json" \
+            --clobber
