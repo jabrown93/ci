@@ -1,7 +1,7 @@
 ---
 # Reusable workflow: on a published GitHub Release of an npm package, generate
-# CycloneDX + SPDX SBOMs, attest the SPDX one to the packed tarball, and upload
-# all three as release assets.
+# CycloneDX + SPDX SBOMs, attest both to the packed tarball, and upload all
+# three as release assets.
 #
 # This is the release-artifact half of what Dependency-Track used to provide.
 # DT held every project's SBOM centrally and answered "what is in this version";
@@ -79,13 +79,22 @@ jobs:
           }
           echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
 
-      # SPDX, not CycloneDX: attest-sbom accepts both, but SPDX is what GitHub's
-      # own attestation surface renders.
-      - name: Attest the SBOM to the tarball
+      # Both formats, one subject: two attestations against the same tarball.
+      # SPDX is what GitHub's attestation surface renders; CycloneDX is what the
+      # dependency/licence tooling reads, and it is the ecosystem-native half
+      # (cyclonedx-npm resolves the real dependency graph, where the SPDX half is
+      # a syft scan of what `npm ci` installed).
+      - name: Attest the SPDX SBOM to the tarball
         uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
         with:
           subject-path: ${{ steps.pack.outputs.tarball }}
           sbom-path: ${{ runner.temp }}/sbom/sbom.spdx.json
+
+      - name: Attest the CycloneDX SBOM to the tarball
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: ${{ runner.temp }}/sbom/sbom.cdx.json
 
       - name: Upload release assets
         env:

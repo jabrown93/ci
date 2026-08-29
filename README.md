@@ -397,10 +397,10 @@ Authenticates as a GitHub App and publishes to npm via OIDC trusted publishing.
 
 ### `sbom-release.yml` — SBOMs as release assets + an attestation on the tarball
 
-Generates CycloneDX + SPDX SBOMs for a published npm release, attests the SPDX
-one to the packed tarball, and uploads all three as release assets. This is the
+Generates CycloneDX + SPDX SBOMs for a published npm release, attests **both**
+to the packed tarball, and uploads all three as release assets. This is the
 release-artifact half of what Dependency-Track used to hold centrally; image
-repos get the equivalent from buildx `sbom: true`, so this covers npm packages.
+repos get the equivalent from `docker-release.yml`, so this covers npm packages.
 
 | input | default |
 |---|---|
