@@ -58,6 +58,14 @@ touches. Consequences that matter when editing:
   `packageRules` override enforcing this for Renovate-authored action bumps.
 - Commit type drives the bump: `feat:` → minor, `fix:`/`perf:` → patch,
   `feat!:`/`BREAKING CHANGE:` footer → major, anything else → no release.
+- **A PR touching more than one component must be REBASE-merged, never
+  squashed.** Squashing collapses the per-component commits into one commit
+  that touches every path, so release-please applies that single type to all of
+  them — a `feat!:` for one workflow would major-bump every action in the PR,
+  including ones that only got a comment edit. Rebase replays each commit, so
+  each component gets the bump its own commit earned. Split the work into
+  one commit per component and rebase-merge; squash is only safe for a
+  single-component PR.
 - Renovate bumps to third-party action SHAs **pinned inside** workflows/actions
   are labeled `fix` (they change what consumers execute) via the shared
   preset (`jabrown93/.github`), so they do release.

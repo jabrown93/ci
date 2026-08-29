@@ -165,6 +165,9 @@ runs:
         SPDX_PATH: ${{ inputs.spdx-path }}
       run: |
         set -euo pipefail
+        # rm first: RUNNER_TEMP persists across steps, so a second invocation in
+        # the same job would otherwise upload the first one's SBOMs too.
+        rm -rf "${RUNNER_TEMP}/sbom"
         mkdir -p "${RUNNER_TEMP}/sbom"
         cp "${SBOM_PATH}" "${SPDX_PATH}" "${RUNNER_TEMP}/sbom/"
 
