@@ -2,6 +2,10 @@
 # Reusable workflow: semantic-release for a Docker-image repo, authenticating
 # as a GitHub App, then building/pushing/signing a multi-arch image to GHCR.
 #
+# The image carries both SBOM formats as OCI referrers: SPDX from buildx
+# (`sbom: true`), CycloneDX from a syft scan attested with cosign. BuildKit
+# cannot emit CycloneDX, hence the second pass.
+#
 # Two jobs so a build/push/sign failure never strands a tagged-but-imageless
 # release: `image` only runs once `release` has published, and re-running just
 # the failed job (GitHub's "re-run failed jobs") reuses `release`'s outputs
@@ -195,3 +199,43 @@ jobs:
             exit 1
           fi
           cosign sign --yes "${IMAGE}@${DIGEST}"
+
+      # buildx `sbom: true` above already attached an SPDX SBOM -- BuildKit's
+      # attestation is SPDX-only and cannot emit CycloneDX. This adds the
+      # CycloneDX half, so both formats hang off the same digest.
+      #
+      # syft resolves a multi-arch index to one manifest, so the CycloneDX SBOM
+      # describes a single architecture while buildx's SPDX is per-platform.
+      # Acceptable: these images differ only by compiled arch, not package set.
+      - name: Generate CycloneDX SBOM
+        uses: anchore/sbom-action@e22c389904149dbc22b58101806040fa8d37a610 # v0.24.0
+        env:
+          # syft's file-metadata cataloger defaults to `owned-by-package`, which emits a
+          # CycloneDX `type: file` component -- name, sha1, sha256, no purl, no license --
+          # for every package-owned file in the image. They cannot match a vulnerability
+          # and cannot carry a license, so they are pure ballast: measured elsewhere at
+          # 7,265 of 7,506 components on one image and 15,521 of 16,399 on another.
+          SYFT_FILE_METADATA_SELECTION: none
+          # Go modules, npm packages and Python distributions frequently ship no license
+          # metadata syft can read from the image alone, so they arrive with no license.
+          # Enrichment resolves them from the upstream registries at scan time.
+          # Best-effort: an unreachable registry degrades license coverage rather than
+          # failing the build.
+          SYFT_ENRICH: golang,javascript,python
+          # Pinned, not corrective. `enrich: python` feeds one switch to two settings --
+          # remote license lookup AND guess-unpinned-requirements, which invents a
+          # version for each unpinned requirements.txt entry and would feed fabricated
+          # versions into vulnerability matching. Today it cannot reach that setting,
+          # but the asymmetry looks accidental, so the value is made explicit here.
+          SYFT_PYTHON_GUESS_UNPINNED_REQUIREMENTS: 'false'
+        with:
+          # Digest, never the tag: the tag can move between the push and this scan.
+          image: ${{ env.IMAGE }}@${{ steps.build.outputs.digest }}
+          format: cyclonedx-json
+          output-file: sbom.cdx.json
+          upload-artifact: false
+
+      - name: Attach CycloneDX SBOM attestation (keyless)
+        env:
+          DIGEST: ${{ steps.build.outputs.digest }}
+        run: cosign attest --yes --type cyclonedx --predicate sbom.cdx.json "${IMAGE}@${DIGEST}"
