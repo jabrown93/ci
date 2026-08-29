@@ -29,7 +29,7 @@ from the Conventional Commits merged to `main`:
 
 | Component | Contents | Tag |
 |---|---|---|
-| `workflows` | the reusable workflows — `docker-release`, `npm-release` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
+| `workflows` | the reusable workflows — `docker-release`, `npm-release`, `sbom-release` (they must share one flat `.github/workflows/` dir, so they share one stream) | `workflows-vX.Y.Z` |
 | `generate-sbom` | the `generate-sbom` composite action | `generate-sbom-vX.Y.Z` |
 | `codeql` | the `codeql` composite action | `codeql-vX.Y.Z` |
 | `fossa` | the `fossa` composite action | `fossa-vX.Y.Z` |
@@ -394,6 +394,34 @@ Authenticates as a GitHub App and publishes to npm via OIDC trusted publishing.
 > entry-point filename, so the caller workflow must stay named `release.yaml`/
 > `release.yml` (whatever is registered on npmjs.org) and trigger on push to the
 > release branches.
+
+### `sbom-release.yml` — SBOMs as release assets + an attestation on the tarball
+
+Generates CycloneDX + SPDX SBOMs for a published npm release, attests the SPDX
+one to the packed tarball, and uploads all three as release assets. This is the
+release-artifact half of what Dependency-Track used to hold centrally; image
+repos get the equivalent from buildx `sbom: true`, so this covers npm packages.
+
+| input | default |
+|---|---|
+| `node-version` | `'24'` |
+
+> The caller **must** trigger on `release: [published]` — the tag name is read
+> from `github.event.release` for both the checkout ref and the upload target.
+
+```yaml
+name: SBOM release
+on:
+  release:
+    types: [published]
+jobs:
+  sbom:
+    uses: jabrown93/ci/.github/workflows/sbom-release.yml@<sha> # workflows-vX.Y.Z
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+```
 
 ---
 

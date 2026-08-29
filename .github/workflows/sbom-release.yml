@@ -1,0 +1,99 @@
+---
+# Reusable workflow: on a published GitHub Release of an npm package, generate
+# CycloneDX + SPDX SBOMs, attest the SPDX one to the packed tarball, and upload
+# all three as release assets.
+#
+# This is the release-artifact half of what Dependency-Track used to provide.
+# DT held every project's SBOM centrally and answered "what is in this version";
+# with it decommissioned the SBOM has to travel with the artifact instead. Image
+# repos already get that from buildx (`sbom: true` attaches an OCI referrer), so
+# this workflow exists for the one shape buildx cannot cover: npm packages.
+#
+# npm-only on purpose. The attestation subject is the `npm pack` tarball, and
+# `ecosystem: npm` is hardcoded rather than plumbed through -- a maven or syft
+# consumer would need a different subject, so it can grow an input when one
+# actually exists.
+#
+# The caller owns the trigger and MUST use `release: [published]` --
+# `github.event.release.tag_name` is read directly for both the checkout ref and
+# the upload target. semantic-release publishes the release as the GitHub App
+# (not GITHUB_TOKEN), so the event does fire.
+#
+# The tarball is packed from the release tag, not downloaded from npm: this runs
+# right after publish and the registry does not serve the version immediately.
+# It is the same input `npm publish` used, so the attestation still describes
+# what was published.
+name: SBOM release
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        description: Node.js version used to install dependencies and pack.
+        required: false
+        type: string
+        default: '24'
+
+jobs:
+  sbom:
+    name: SBOM release assets
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # upload release assets
+      id-token: write # keyless signing of the attestation
+      attestations: write # write the attestation to the attestation store
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.release.tag_name }}
+          persist-credentials: false
+
+      # Runs `npm ci`, so it also leaves node_modules and the Node toolchain in
+      # place for the `npm pack` step below.
+      #
+      # Referenced by FULL pinned ref, not ./actions/generate-sbom: a local `./`
+      # ref used from inside a reusable workflow resolves against the CALLER's
+      # checkout, not this repo, so it would not be found.
+      - name: Generate SBOMs
+        uses: jabrown93/ci/actions/generate-sbom@3971b21284e5ba160483f1d6c4b3dc48c502e9ea # generate-sbom-v1.1.0
+        with:
+          ecosystem: npm
+          node-version: ${{ inputs.node-version }}
+
+      - name: Pack the release tarball
+        id: pack
+        run: |
+          set -euo pipefail
+          # --json over parsing stdout: `npm pack` prints progress on some
+          # versions, so the last line is not reliably the filename.
+          tarball="$(npm pack --json | jq -r '.[0].filename')"
+          [ -n "${tarball}" ] && [ -f "${tarball}" ] || {
+            echo "::error::npm pack produced no tarball" >&2
+            exit 1
+          }
+          echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
+
+      # SPDX, not CycloneDX: attest-sbom accepts both, but SPDX is what GitHub's
+      # own attestation surface renders.
+      - name: Attest the SBOM to the tarball
+        uses: actions/attest-sbom@c604332985a26aa8cf1bdc465b92731239ec6b9e # v4.1.0
+        with:
+          subject-path: ${{ steps.pack.outputs.tarball }}
+          sbom-path: ${{ runner.temp }}/sbom/sbom.spdx.json
+
+      - name: Upload release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.event.release.tag_name }}
+          TARBALL: ${{ steps.pack.outputs.tarball }}
+          SBOM_DIR: ${{ runner.temp }}/sbom
+        run: |
+          set -euo pipefail
+          # --clobber so a re-run of a failed job replaces the assets it already
+          # uploaded instead of failing on the name collision.
+          gh release upload "${TAG}" \
+            "${TARBALL}" \
+            "${SBOM_DIR}/sbom.cdx.json" \
+            "${SBOM_DIR}/sbom.spdx.json" \
+            --clobber
