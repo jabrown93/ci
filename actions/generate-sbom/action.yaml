@@ -12,17 +12,23 @@
 #
 # The caller checks out the repo first, so it controls fetch-depth.
 #
-# The artifact always holds sbom.cdx.json and sbom.spdx.json at its ROOT:
-# upload-artifact flattens each single-file path to its basename, so Maven's
-# target/sbom.cdx.json still arrives as sbom.cdx.json for the consumer.
-# Consumers therefore never parameterize the filenames -- only this generator
-# knows where the SBOMs were written.
+# The artifact always holds sbom.cdx.json and sbom.spdx.json at its ROOT, so
+# consumers never parameterize the filenames -- only this generator knows where
+# each was written. That needs an explicit staging dir: upload-artifact flattens
+# to the basename only for a SINGLE path, and roots a multi-path upload at the
+# least common ancestor instead -- which would ship Maven's SBOM as
+# target/sbom.cdx.json.
 #
 # The CycloneDX half is ecosystem-native (cyclonedx-npm, cyclonedx-maven) so it
 # reports the RESOLVED dependency graph. The SPDX half is a single syft
-# filesystem scan for every ecosystem: syft reads the same installed tree that
-# the ecosystem step just materialized, and one step beats three near-identical
-# ones. It therefore runs AFTER the ecosystem install steps, never before.
+# filesystem scan for every ecosystem, run AFTER the ecosystem steps so it sees
+# what they installed -- one step beats three near-identical ones.
+#
+# That makes SPDX fidelity ecosystem-dependent: npm gets the resolved tree from
+# node_modules, but `cyclonedx:makeAggregateBom` never packages, so a maven run
+# leaves no jars for syft and its SPDX covers only pom-declared dependencies.
+# Use the CycloneDX output for maven dependency analysis. Fixable with a
+# `mvn dependency:copy-dependencies` step if a maven consumer ever needs it.
 name: Generate CycloneDX and SPDX SBOMs
 description: >-
   Generate CycloneDX and SPDX SBOMs of the checked-out repo's resolved
@@ -150,11 +156,21 @@ runs:
         # the step below owns the upload so the name is stable for consumers.
         upload-artifact: false
 
+    # Both SBOMs into one dir so the artifact is rooted there and each file keeps
+    # its basename, whatever path the generator wrote it to.
+    - name: Stage SBOMs
+      shell: bash
+      env:
+        SBOM_PATH: ${{ inputs.sbom-path }}
+        SPDX_PATH: ${{ inputs.spdx-path }}
+      run: |
+        set -euo pipefail
+        mkdir -p "${RUNNER_TEMP}/sbom"
+        cp "${SBOM_PATH}" "${SPDX_PATH}" "${RUNNER_TEMP}/sbom/"
+
     - name: Upload SBOM artifact
       uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: ${{ inputs.artifact-name }}
         if-no-files-found: error
-        path: |
-          ${{ inputs.sbom-path }}
-          ${{ inputs.spdx-path }}
+        path: ${{ runner.temp }}/sbom

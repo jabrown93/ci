@@ -28,14 +28,11 @@ inputs:
 runs:
   using: composite
   steps:
+    # One step, not an analyze step plus a gated test step: fossa-action always
+    # runs `fossa analyze` and `run-tests` only appends `fossa test`, so a second
+    # invocation would re-scan and re-submit the same revision.
     - name: FOSSA analyze
       uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
       with:
         api-key: ${{ inputs.api-key }}
-
-    - name: FOSSA test
-      if: inputs.run-tests == 'true'
-      uses: fossas/fossa-action@29693cc50323968e039056be419b32989fc5880c # v2.0.0
-      with:
-        api-key: ${{ inputs.api-key }}
-        run-tests: true
+        run-tests: ${{ inputs.run-tests }}
