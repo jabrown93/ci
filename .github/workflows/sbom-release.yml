@@ -21,8 +21,10 @@
 #
 # The tarball is packed from the release tag, not downloaded from npm: this runs
 # right after publish and the registry does not serve the version immediately.
-# It is the same input `npm publish` used, so the attestation still describes
-# what was published.
+# It is the same tree `npm publish` packed, so the attestation describes what was
+# published -- but packing reruns prepack/prepare, so byte-identity holds only
+# for a deterministic build. Switch to downloading the published tarball if that
+# ever has to be exact.
 name: SBOM release
 
 on:
@@ -65,16 +67,30 @@ jobs:
           # before reaching the --clobber upload below. The artifact is a
           # byproduct here -- the release assets are the deliverable.
           artifact-name: sbom-${{ github.run_attempt }}
+          # Written outside the package directory, NOT to the repo root. A
+          # package without a `files` allowlist or `.npmignore` defaults to
+          # `["*"]`, so root-level SBOMs would be packed into the tarball below --
+          # making the uploaded asset differ from what npm published, and binding
+          # each attestation to a tarball containing its own SBOM.
+          sbom-path: ${{ runner.temp }}/sbom.cdx.json
+          spdx-path: ${{ runner.temp }}/sbom.spdx.json
 
       - name: Pack the release tarball
         id: pack
         run: |
           set -euo pipefail
-          # --json over parsing stdout: `npm pack` prints progress on some
-          # versions, so the last line is not reliably the filename.
-          tarball="$(npm pack --json | jq -r '.[0].filename')"
-          [ -n "${tarball}" ] && [ -f "${tarball}" ] || {
-            echo "::error::npm pack produced no tarball" >&2
+          # Pack into a clean directory and glob it, rather than parsing
+          # `npm pack --json`: prepack/prepare/postpack hooks write to stdout
+          # ahead of the JSON, so jq would get a mixed stream and this step would
+          # die before the attestation. rm -rf first so a rerun cannot match the
+          # previous attempt's tarball.
+          dest="${RUNNER_TEMP}/pack"
+          rm -rf "${dest}"
+          mkdir -p "${dest}"
+          npm pack --pack-destination "${dest}" >/dev/null
+          tarball="$(find "${dest}" -maxdepth 1 -name '*.tgz')"
+          [ -f "${tarball}" ] || {
+            echo "::error::npm pack produced no single tarball in ${dest}" >&2
             exit 1
           }
           echo "tarball=${tarball}" >> "$GITHUB_OUTPUT"
