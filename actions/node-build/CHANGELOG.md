@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/jabrown93/ci/compare/node-build-v1.0.2...node-build-v1.0.3) (2026-08-30)
+
+
+### Bug Fixes
+
+* reset the SBOM staging dir and document the rebase-merge requirement ([e4a89ed](https://github.com/jabrown93/ci/commit/e4a89edf3be42d41ac3e262c0944307e7e61057e))
+
 ## [1.0.2](https://github.com/jabrown93/ci/compare/node-build-v1.0.1...node-build-v1.0.2) (2026-07-23)
 
 
