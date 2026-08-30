@@ -36,6 +36,7 @@ from the Conventional Commits merged to `main`:
 | `node-build` | the `node-build` composite action | `node-build-vX.Y.Z` |
 | `go-build` | the `go-build` composite action | `go-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
+| `merge-back` | the `merge-back` composite action | `merge-back-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
 | `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
 | `claude-review` | the `claude-review` composite action | `claude-review-vX.Y.Z` |
@@ -240,6 +241,46 @@ jobs:
       actions: write
     steps:
       - uses: jabrown93/ci/actions/stale@<sha> # stale-v1.0.0
+```
+
+### `merge-back` — merge the default branch into the prerelease branches
+
+Keeps `beta`/`alpha`/`next` from falling behind the stable line — semantic-release
+computes a prerelease version from a stale base otherwise. Merges through the
+GitHub **merges API** (not git): the API commit is signed, satisfying
+`required_signatures`, and it bypasses the squash-only PR rule that would
+otherwise rewrite the prerelease branch's history. Needs no checkout.
+
+Branches absent from the repo are skipped, so the default suits every consumer.
+A conflict (HTTP 409) opens a PR and leaves the run **green** — the PR is the
+notification. Only unexpected API failures fail the job. No job `permissions`
+are needed: every call authenticates as the App.
+
+| input | default |
+|---|---|
+| `app-id` | *(required)* GitHub App client id |
+| `app-private-key` | *(required)* GitHub App private key |
+| `branches` | `'beta alpha next'` (space-separated, in order) |
+| `source` | `''` (empty — the repository's default branch) |
+
+```yaml
+name: Merge back
+on:
+  push:
+    branches: [main]
+  workflow_dispatch: {}
+concurrency:
+  group: merge-back-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  merge-back:
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - uses: jabrown93/ci/actions/merge-back@<sha> # merge-back-v1.0.0
+        with:
+          app-id: ${{ secrets.APP_ID }}
+          app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 ```
 
 ### `release-checkout` — app-token + branch-tip checkout for a release job

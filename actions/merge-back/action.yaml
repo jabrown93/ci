@@ -1,0 +1,123 @@
+# Composite action: merge the default branch back into the prerelease
+# branches (beta/alpha/next) so they never fall behind the stable line.
+# semantic-release expects exactly this — a prerelease branch missing the
+# stable branch's commits computes its next version from a stale base.
+#
+# Merging goes through the GitHub *merges* API, not git, for three reasons
+# the prerelease branch ruleset imposes:
+#   * `required_signatures` — a merge commit created by the git CLI on a
+#     runner is unsigned and is rejected. Commits created through the API
+#     are signed by GitHub.
+#   * `require-pull-request` with `allowed_merge_methods: [squash]` — going
+#     through a PR would squash the stable branch into the prerelease
+#     branch, rewriting its history and guaranteeing permanent divergence.
+#   * The App token bypasses both rulesets (it is a listed bypass actor),
+#     so the API merge lands directly where a runner-side push would not.
+# It also needs no checkout: this is one API call per branch.
+#
+# A conflicting merge (HTTP 409) opens a PR instead and leaves the run
+# GREEN — a conflict is an expected, handled outcome and the PR is the
+# notification. Only unexpected API failures fail the job.
+#
+# The CALLER supplies the trigger (push to the default branch),
+# `concurrency`, and `runs-on`. No job `permissions` are needed: every call
+# authenticates as the App, never as GITHUB_TOKEN.
+name: Merge back
+description: >-
+  Merge the default branch into each existing prerelease branch
+  (beta/alpha/next) via the GitHub merges API, opening a PR on conflict.
+inputs:
+  app-id:
+    description: GitHub App client id used to mint the token
+    required: true
+  app-private-key:
+    description: GitHub App private key
+    required: true
+  branches:
+    description: >-
+      Space-separated prerelease branches to merge into, in order. Branches
+      absent from the repo are skipped, so the default is safe everywhere.
+    required: false
+    default: "beta alpha next"
+  source:
+    description: >-
+      Branch to merge FROM. Defaults to the repository's default branch.
+    required: false
+    default: ""
+runs:
+  using: composite
+  steps:
+    - name: Generate app token
+      id: app-token
+      uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+      with:
+        client-id: ${{ inputs.app-id }}
+        private-key: ${{ inputs.app-private-key }}
+
+    - name: Merge into prerelease branches
+      shell: bash
+      env:
+        GH_TOKEN: ${{ steps.app-token.outputs.token }}
+        REPO: ${{ github.repository }}
+        OWNER: ${{ github.repository_owner }}
+        BRANCHES: ${{ inputs.branches }}
+        SOURCE: ${{ inputs.source }}
+      run: |
+        set -euo pipefail
+
+        # Resolved from the API, not github.event.repository.default_branch,
+        # so this behaves identically on push/schedule/workflow_dispatch.
+        if [ -z "$SOURCE" ]; then
+          SOURCE=$(gh api "repos/$REPO" --jq .default_branch)
+        fi
+
+        open_conflict_pr() {
+          branch="$1"
+          existing=$(gh api --method GET "repos/$REPO/pulls" \
+            -f state=open -f base="$branch" -f head="$OWNER:$SOURCE" \
+            --jq 'length')
+          if [ "$existing" != "0" ]; then
+            echo "::warning::$SOURCE conflicts with $branch; PR open already"
+            return
+          fi
+          body=$(printf '%s %s\n\n%s %s %s\n' \
+            "Automated merge-back of \`$SOURCE\` into \`$branch\` hit a" \
+            "conflict, so it could not be merged through the API." \
+            "Resolve it and merge with a **merge commit** — squashing" \
+            "would rewrite \`$branch\`'s history and make every later" \
+            "merge-back conflict too.")
+          url=$(gh api --method POST "repos/$REPO/pulls" \
+            -f title="chore: merge $SOURCE into $branch" \
+            -f head="$SOURCE" \
+            -f base="$branch" \
+            -f body="$body" \
+            --jq .html_url)
+          echo "::warning::$SOURCE conflicts with $branch; opened $url"
+        }
+
+        for branch in $BRANCHES; do
+          if ! gh api "repos/$REPO/branches/$branch" --silent 2>/dev/null; then
+            echo "skip $branch: does not exist in $REPO"
+            continue
+          fi
+
+          set +e
+          response=$(gh api --include --method POST "repos/$REPO/merges" \
+            -f base="$branch" \
+            -f head="$SOURCE" \
+            -f commit_message="chore: merge $SOURCE into $branch" \
+            2>/tmp/merge-back.err)
+          set -e
+
+          status=$(printf '%s\n' "$response" | head -1 | awk '{print $2}')
+          case "$status" in
+            201) echo "::notice::merged $SOURCE into $branch" ;;
+            204) echo "$branch is already up to date with $SOURCE" ;;
+            409) open_conflict_pr "$branch" ;;
+            *)
+              echo "::error::unexpected HTTP ${status:-none} on $branch"
+              cat /tmp/merge-back.err >&2
+              exit 1
+              ;;
+          esac
+        done

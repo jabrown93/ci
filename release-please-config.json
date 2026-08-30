@@ -46,6 +46,10 @@
     "actions/release-commit": {
       "release-type": "simple",
       "component": "release-commit"
+    },
+    "actions/merge-back": {
+      "release-type": "simple",
+      "component": "merge-back"
     }
   }
 }
