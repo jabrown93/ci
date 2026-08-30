@@ -38,6 +38,7 @@ from the Conventional Commits merged to `main`:
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 | `merge-back` | the `merge-back` composite action | `merge-back-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
+| `release-commit` | the `release-commit` composite action (internal — staged by the release workflows) | `release-commit-vX.Y.Z` |
 | `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
 | `claude-review` | the `claude-review` composite action | `claude-review-vX.Y.Z` |
 
@@ -302,6 +303,33 @@ output: `token` — the minted installation token, for the release step.
 > (`jabrown93/ci/actions/release-checkout@<sha>`), **not** `./actions/release-checkout`
 > — a local `./` ref used from inside a reusable workflow resolves against the
 > **caller's** checkout, not this repo.
+
+### `release-commit` — Verified version-bump commits for semantic-release
+
+**Internal.** Exposes `release-commit.mjs` as `$RELEASE_COMMIT_SCRIPT` for a
+repo's `.releaserc` `@semantic-release/exec` `prepareCmd`, in place of
+`@semantic-release/git`:
+
+```
+node $RELEASE_COMMIT_SCRIPT --branch ${branch.name} \
+  --message 'chore(release): v${nextRelease.version} [skip ci]' -- <files>
+```
+
+`@semantic-release/git` commits with local git and a CI bot has no signing key,
+so every `chore(release)` commit lands unsigned. This commits via GraphQL
+`createCommitOnBranch` instead — signed by GitHub, shown as Verified, attributed
+to the token's app identity — keeping the git plugin's concurrency semantics
+(`expectedHeadOid`) and hard-resetting the checkout so the release tag points at
+the API commit. No inputs. Needs `GITHUB_TOKEN`/`GH_TOKEN` and
+`GITHUB_REPOSITORY` in the release step's env; `npm-release.yml` and
+`docker-release.yml` already set both.
+
+> Write `$RELEASE_COMMIT_SCRIPT` **without braces** in `prepareCmd`:
+> `@semantic-release/exec` runs the command through a Lodash template, which
+> would evaluate `${RELEASE_COMMIT_SCRIPT}` as JS and fail.
+
+> A reusable workflow must reference this by its **full pinned ref**
+> (`jabrown93/ci/actions/release-commit@<sha>`), **not** `./actions/release-commit`.
 
 ### `conventional-commits` — enforce Conventional Commits on a PR's title and commits
 
