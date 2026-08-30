@@ -47,6 +47,7 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `node-build` | `actions/node-build/` | `node-build-vX.Y.Z` |
 | `go-build` | `actions/go-build/` | `go-build-vX.Y.Z` |
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
+| `merge-back` | `actions/merge-back/` | `merge-back-vX.Y.Z` |
 | `release-checkout` | `actions/release-checkout/` (internal, used only by the release workflows) | `release-checkout-vX.Y.Z` |
 | `claude-review` | `actions/claude-review/` | `claude-review-vX.Y.Z` |
 
