@@ -49,6 +49,8 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
 | `merge-back` | `actions/merge-back/` | `merge-back-vX.Y.Z` |
 | `release-checkout` | `actions/release-checkout/` (internal, used only by the release workflows) | `release-checkout-vX.Y.Z` |
+| `release-commit` | `actions/release-commit/` (internal, staged by the release workflows) | `release-commit-vX.Y.Z` |
+| `conventional-commits` | `actions/conventional-commits/` | `conventional-commits-vX.Y.Z` |
 | `claude-review` | `actions/claude-review/` | `claude-review-vX.Y.Z` |
 
 release-please attributes a commit to a component by the path of files it
