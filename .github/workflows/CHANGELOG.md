@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1](https://github.com/jabrown93/ci/compare/workflows-v2.1.0...workflows-v2.1.1) (2026-09-02)
+
+
+### Bug Fixes
+
+* **deps:** update anchore/sbom-action action to v0.24.2 ([#94](https://github.com/jabrown93/ci/issues/94)) ([9971027](https://github.com/jabrown93/ci/commit/9971027552b5814cdd683daaed925817572a3a70))
+
 ## [2.1.0](https://github.com/jabrown93/ci/compare/workflows-v2.0.0...workflows-v2.1.0) (2026-08-29)
 
 
