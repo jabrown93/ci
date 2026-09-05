@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.2](https://github.com/jabrown93/ci/compare/workflows-v2.1.1...workflows-v2.1.2) (2026-09-05)
+
+
+### Bug Fixes
+
+* **deps:** update docker/setup-qemu-action action to v4.3.0 ([#100](https://github.com/jabrown93/ci/issues/100)) ([6046fa9](https://github.com/jabrown93/ci/commit/6046fa9496f442a83c6e3d7d7409ff23db6ec530))
+
 ## [2.1.1](https://github.com/jabrown93/ci/compare/workflows-v2.1.0...workflows-v2.1.1) (2026-09-02)
 
 
