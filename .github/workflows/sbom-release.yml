@@ -89,7 +89,7 @@ jobs:
       # ref used from inside a reusable workflow resolves against the CALLER's
       # checkout, not this repo, so it would not be found.
       - name: Generate SBOMs
-        uses: jabrown93/ci/actions/generate-sbom@d33f7a654abc616ee0509ae9a9a105a41b511d2b # generate-sbom-v1.1.1
+        uses: jabrown93/ci/actions/generate-sbom@73ac12406a537710cbb96058db4860001011cbfc # generate-sbom-v1.1.2
         with:
           ecosystem: npm
           node-version: ${{ inputs.node-version }}
