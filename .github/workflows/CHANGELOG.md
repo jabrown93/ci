@@ -1,5 +1,13 @@
 # Changelog
 
+## [2.1.3](https://github.com/jabrown93/ci/compare/workflows-v2.1.2...workflows-v2.1.3) (2026-09-19)
+
+
+### Bug Fixes
+
+* **deps:** update docker/build-push-action action to v7.4.0 ([#109](https://github.com/jabrown93/ci/issues/109)) ([16f615b](https://github.com/jabrown93/ci/commit/16f615b474c2f2ac129ff95632761d698df89c85))
+* **deps:** update docker/setup-qemu-action action to v4.4.0 ([#110](https://github.com/jabrown93/ci/issues/110)) ([b21ae2c](https://github.com/jabrown93/ci/commit/b21ae2cb99cb14ad3b27f308a70ce23696a13706))
+
 ## [2.1.2](https://github.com/jabrown93/ci/compare/workflows-v2.1.1...workflows-v2.1.2) (2026-09-05)
 
 
