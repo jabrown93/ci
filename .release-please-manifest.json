@@ -1,5 +1,5 @@
 {
-  ".github/workflows": "2.1.3",
+  ".github/workflows": "2.1.4",
   "actions/generate-sbom": "1.1.2",
   "actions/node-build": "1.0.3",
   "actions/codeql": "1.0.10",
