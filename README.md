@@ -37,6 +37,7 @@ from the Conventional Commits merged to `main`:
 | `go-build` | the `go-build` composite action | `go-build-vX.Y.Z` |
 | `stale` | the `stale` composite action | `stale-vX.Y.Z` |
 | `merge-back` | the `merge-back` composite action | `merge-back-vX.Y.Z` |
+| `docker-image` | the `docker-image` composite action | `docker-image-vX.Y.Z` |
 | `release-checkout` | the `release-checkout` composite action (internal — used by the release workflows) | `release-checkout-vX.Y.Z` |
 | `release-commit` | the `release-commit` composite action (internal — staged by the release workflows) | `release-commit-vX.Y.Z` |
 | `conventional-commits` | the `conventional-commits` composite action | `conventional-commits-vX.Y.Z` |
@@ -282,6 +283,57 @@ jobs:
         with:
           app-id: ${{ secrets.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+```
+
+### `docker-image` — build, push and keylessly sign a Docker image to GHCR
+
+Builds a multi-arch image, pushes it to GHCR, keylessly signs it with cosign,
+and attaches both SBOM formats as OCI referrers (SPDX from buildx `sbom: true`,
+CycloneDX from a syft scan attested with cosign — BuildKit cannot emit
+CycloneDX, hence the second pass). Tags `:beta` when `channel` is `beta`,
+otherwise `:latest`, always alongside `:v<version>`.
+
+> **This action MUST be called from a job that lives directly in the calling
+> repo's own workflow file** — never from inside another reusable workflow.
+> Cosign's keyless signing asks Fulcio for a cert whose SAN is the OIDC
+> identity of the workflow FILE that requested the token. A composite action's
+> steps run as part of the CALLER's job, so that identity is the caller's own
+> `<org>/<repo>/.github/workflows/<file>@<ref>`. This is *why* build/push/sign
+> was pulled out of `docker-release.yml`: that reusable workflow is public, so
+> every one of its callers would otherwise get the IDENTICAL SAN — this repo's
+> own path — and a Kyverno policy pinned to it could not distinguish this
+> org's images from any other repo's. See `docker-release.yml` below for the
+> full caller-side job.
+
+| input | default |
+|---|---|
+| `image` | *(required)* e.g. `ghcr.io/jabrown93/crosswatch` |
+| `version` | *(required)* version to build/tag, without the leading `v` |
+| `channel` | `""` (`"beta"` tags `:beta`; anything else, including empty, tags `:latest`) |
+| `dockerfile` | `./Dockerfile` |
+| `context` | `.` |
+| `platforms` | `linux/amd64,linux/arm64` |
+| `build-args` | `""` (appended after the automatic `APP_VERSION=v<version>`) |
+| `github-token` | *(required)* token used to log in to `ghcr.io` for the push |
+
+output: `digest` — the pushed image's digest (`sha256:...`).
+
+The job calling this action needs `contents: read`, `packages: write`, and
+`id-token: write` (cosign's keyless flow exchanges the job's OIDC token for
+the Fulcio cert). Retrieve the SBOMs with:
+
+```sh
+docker buildx imagetools inspect <image>@<digest> --format '{{json .SBOM}}'   # SPDX
+cosign download attestation --predicate-type cyclonedx <image>@<digest>       # CycloneDX
+```
+
+```yaml
+      - uses: jabrown93/ci/actions/docker-image@<sha> # docker-image-v1.0.0
+        with:
+          image: ghcr.io/jabrown93/crosswatch
+          version: ${{ needs.release.outputs.version }}
+          channel: ${{ needs.release.outputs.channel }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 ```
 
 ### `release-checkout` — app-token + branch-tip checkout for a release job

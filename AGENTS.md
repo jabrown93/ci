@@ -49,6 +49,7 @@ from Conventional Commits on `main` — nothing is hand-versioned:
 | `stale` | `actions/stale/` | `stale-vX.Y.Z` |
 | `merge-back` | `actions/merge-back/` | `merge-back-vX.Y.Z` |
 | `release-checkout` | `actions/release-checkout/` (internal, used only by the release workflows) | `release-checkout-vX.Y.Z` |
+| `docker-image` | `actions/docker-image/` (build/push/sign a Docker image; called from the CALLER's own job so the cosign SAN is the caller's identity) | `docker-image-vX.Y.Z` |
 | `release-commit` | `actions/release-commit/` (internal, staged by the release workflows) | `release-commit-vX.Y.Z` |
 | `conventional-commits` | `actions/conventional-commits/` | `conventional-commits-vX.Y.Z` |
 | `claude-review` | `actions/claude-review/` | `claude-review-vX.Y.Z` |
@@ -106,6 +107,15 @@ checkout, not this repo, and silently fails to be found.
 - `npm-release.yml`'s caller workflow must keep the exact filename registered
   for npm trusted publishing (typically `release.yaml`/`release.yml`) — OIDC
   trusted publishing matches on the caller repo + entry-point filename.
+- `docker-image` MUST be called as a step from a job that lives directly in
+  the CALLING repo's own workflow file, never from inside another reusable
+  workflow. Cosign's keyless-signing Fulcio cert SAN is the OIDC identity of
+  the workflow FILE that requested the token; a composite action's steps run
+  in the caller's job, so that identity is the caller's own
+  `<org>/<repo>/.github/workflows/<file>@<ref>`. If build/push/sign ran inside
+  `docker-release.yml` (a public reusable workflow) instead, every caller
+  would get the SAME SAN — this repo's own path — making a Kyverno keyless
+  policy pinned to it accept images built by ANY repo, not just this org's.
 
 ## Org-wide defaults live elsewhere
 
