@@ -50,6 +50,10 @@
     "actions/merge-back": {
       "release-type": "simple",
       "component": "merge-back"
+    },
+    "actions/docker-image": {
+      "release-type": "simple",
+      "component": "docker-image"
     }
   }
 }
