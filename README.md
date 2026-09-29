@@ -583,10 +583,10 @@ published tarball byte-for-byte only if the build is deterministic —
 `prepack`/`prepare` rerun here. `npm-release.yml` publishes with npm provenance,
 so a digest compared against npm's can differ for that reason alone.
 
-The CycloneDX SBOM covers the dev+prod dependency tree, not the package's
-runtime closure: this workflow does not set `generate-sbom`'s `omit-dev`.
-Dev-only CVEs will therefore read as affecting the published package. The SPDX
-SBOM already omits dev dependencies.
+Both SBOMs cover the package's runtime closure, not its dev dependencies: this
+workflow sets `generate-sbom`'s `omit-dev: 'true'`, so dev-only CVEs do not read
+as affecting the published package. A dependency reachable from production code
+stays even if it is also a devDependency.
 
 ```yaml
 name: SBOM release
