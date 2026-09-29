@@ -25,10 +25,19 @@
 # what they installed -- one step beats three near-identical ones.
 #
 # That makes SPDX fidelity ecosystem-dependent: npm gets the resolved tree from
-# node_modules, but `cyclonedx:makeAggregateBom` never packages, so a maven run
+# package-lock.json (syft's directory scan reads the lockfile, not
+# node_modules), but `cyclonedx:makeAggregateBom` never packages, so a maven run
 # leaves no jars for syft and its SPDX covers only pom-declared dependencies.
 # Use the CycloneDX output for maven dependency analysis. Fixable with a
 # `mvn dependency:copy-dependencies` step if a maven consumer ever needs it.
+#
+# Dev dependencies (npm): by default the CycloneDX SBOM covers dev+prod, while
+# syft already skips lockfile entries flagged `dev`, so the SPDX one does not.
+# `omit-dev: 'true'` makes both production-only: cyclonedx-npm gets `--omit dev`
+# and syft's exclusion is pinned rather than left to its default. Either way a
+# package reachable from a production dependency stays, even if it is also a
+# direct devDependency. The install itself stays a full `npm ci`: callers pack
+# after this (sbom-release.yml), and prepare/prepack scripts need dev tooling.
 name: Generate CycloneDX and SPDX SBOMs
 description: >-
   Generate CycloneDX and SPDX SBOMs of the checked-out repo's resolved
@@ -65,6 +74,13 @@ inputs:
     description: Version of @cyclonedx/cyclonedx-npm to run (ecosystem npm).
     required: false
     default: 4.2.1
+  omit-dev:
+    description: >-
+      'true' limits both SBOMs to production dependencies (npm's --omit dev
+      semantics); dev deps are still installed. Ecosystem npm only. Default
+      'false' leaves dev deps in the CycloneDX SBOM.
+    required: false
+    default: 'false'
   java-version:
     description: JDK version (ecosystem maven).
     required: false
@@ -76,19 +92,34 @@ inputs:
 runs:
   using: composite
   steps:
-    - name: Validate ecosystem
+    - name: Validate inputs
       # Fail loudly here rather than silently uploading nothing: every generate
       # step below is `if`-gated, so an unknown value would skip them all and
-      # only surface as upload-artifact's if-no-files-found.
+      # only surface as upload-artifact's if-no-files-found. omit-dev likewise:
+      # a typo'd value must not quietly publish dev deps.
       shell: bash
       env:
         ECOSYSTEM: ${{ inputs.ecosystem }}
+        OMIT_DEV: ${{ inputs.omit-dev }}
       run: |
         set -euo pipefail
         case "${ECOSYSTEM}" in
           npm | maven | syft) ;;
           *)
             echo "::error::unsupported ecosystem '${ECOSYSTEM}' (expected: npm, maven, syft)"
+            exit 1
+            ;;
+        esac
+        case "${OMIT_DEV}" in
+          false) ;;
+          true)
+            if [ "${ECOSYSTEM}" != npm ]; then
+              echo "::error::omit-dev is only supported for ecosystem npm (got '${ECOSYSTEM}')"
+              exit 1
+            fi
+            ;;
+          *)
+            echo "::error::invalid omit-dev '${OMIT_DEV}' (expected: true, false)"
             exit 1
             ;;
         esac
@@ -111,14 +142,16 @@ runs:
       env:
         CYCLONEDX_NPM_VERSION: ${{ inputs.cyclonedx-npm-version }}
         SBOM_PATH: ${{ inputs.sbom-path }}
+        OMIT_DEV: ${{ inputs.omit-dev }}
       run: |
         set -euo pipefail
         # --ignore-npm-errors: a messy dependency tree (an invalid peer) must not
         # abort generation.
-        npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" \
-          --ignore-npm-errors \
-          --output-format JSON \
-          --output-file "${SBOM_PATH}"
+        args=(--ignore-npm-errors --output-format JSON --output-file "${SBOM_PATH}")
+        if [ "${OMIT_DEV}" = true ]; then
+          args+=(--omit dev)
+        fi
+        npx --yes "@cyclonedx/cyclonedx-npm@${CYCLONEDX_NPM_VERSION}" "${args[@]}"
 
     - name: Set up JDK
       if: inputs.ecosystem == 'maven'
@@ -147,6 +180,11 @@ runs:
         upload-artifact: false
 
     - name: Generate SPDX SBOM
+      # Overridden only on opt-in. Step env shadows the caller's, so otherwise
+      # re-pass the inherited value: a caller already setting this var (or
+      # leaving it unset, i.e. syft's default) keeps today's output.
+      env:
+        SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: ${{ inputs.omit-dev == 'true' && 'false' || env.SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES }}
       uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
       with:
         path: .

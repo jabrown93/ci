@@ -85,9 +85,17 @@ reports the resolved dependency graph); SPDX comes from a single syft
 filesystem scan of the tree those generators just installed.
 
 > SPDX fidelity is ecosystem-dependent. `npm` gets the resolved tree from
-> `node_modules`, but `cyclonedx:makeAggregateBom` never packages, so a `maven`
+> `package-lock.json` (syft's directory scan reads the lockfile, not
+> `node_modules`), but `cyclonedx:makeAggregateBom` never packages, so a `maven`
 > run leaves no jars for syft and its SPDX covers only pom-declared
 > dependencies — use the CycloneDX output for maven dependency analysis.
+
+> Dev dependencies (`npm`): by default the CycloneDX SBOM includes them, while
+> the SPDX one already omits them (syft skips lockfile entries flagged `dev`).
+> `omit-dev: 'true'` makes **both** production-only — `cyclonedx-npm --omit dev`
+> plus an explicit syft setting. A package reachable from a production
+> dependency stays even if it is also a direct devDependency. `npm ci` still
+> installs dev deps, so a later `npm pack` can run `prepare`/`prepack`.
 
 | input | default |
 |---|---|
@@ -97,6 +105,7 @@ filesystem scan of the tree those generators just installed.
 | `artifact-name` | `sbom` (holds both files) |
 | `node-version` | `'24'` (ecosystem `npm`) |
 | `cyclonedx-npm-version` | `4.2.1` (ecosystem `npm`) |
+| `omit-dev` | `'false'` (ecosystem `npm` only; `'true'` = production-only SBOMs) |
 | `java-version` | `'25'` (ecosystem `maven`) |
 | `java-distribution` | `corretto` (ecosystem `maven`) |
 
@@ -574,9 +583,10 @@ published tarball byte-for-byte only if the build is deterministic —
 `prepack`/`prepare` rerun here. `npm-release.yml` publishes with npm provenance,
 so a digest compared against npm's can differ for that reason alone.
 
-The SBOMs cover the dev+prod dependency tree, not the package's runtime closure:
-`generate-sbom` runs plain `npm ci` and does not pass `--omit dev`. Dev-only
-CVEs will therefore read as affecting the published package.
+The CycloneDX SBOM covers the dev+prod dependency tree, not the package's
+runtime closure: this workflow does not set `generate-sbom`'s `omit-dev`.
+Dev-only CVEs will therefore read as affecting the published package. The SPDX
+SBOM already omits dev dependencies.
 
 ```yaml
 name: SBOM release
