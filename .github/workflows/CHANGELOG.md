@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.1](https://github.com/jabrown93/ci/compare/workflows-v3.0.0...workflows-v3.0.1) (2026-09-29)
+
+
+### Bug Fixes
+
+* **workflows:** limit sbom-release SBOMs to production dependencies ([#125](https://github.com/jabrown93/ci/issues/125)) ([ca19b27](https://github.com/jabrown93/ci/commit/ca19b27b39a2ee13a9b893c7e5629faeefbcfc44)), closes [#86](https://github.com/jabrown93/ci/issues/86)
+
 ## [3.0.0](https://github.com/jabrown93/ci/compare/workflows-v2.1.4...workflows-v3.0.0) (2026-09-26)
 
 
