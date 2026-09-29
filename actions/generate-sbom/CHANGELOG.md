@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.0](https://github.com/jabrown93/ci/compare/generate-sbom-v1.1.2...generate-sbom-v1.2.0) (2026-09-29)
+
+
+### Features
+
+* **generate-sbom:** add omit-dev input for production-only npm SBOMs ([#123](https://github.com/jabrown93/ci/issues/123)) ([b86ebbf](https://github.com/jabrown93/ci/commit/b86ebbfc5438c538f193c400eb90b67cb56cd62a)), closes [#86](https://github.com/jabrown93/ci/issues/86)
+
 ## [1.1.2](https://github.com/jabrown93/ci/compare/generate-sbom-v1.1.1...generate-sbom-v1.1.2) (2026-09-13)
 
 
