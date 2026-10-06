@@ -24,6 +24,11 @@
 # prerelease branch's ruleset must allow the "merge" method so the PR can
 # land as a merge commit.
 #
+# Branch names containing `#` or `%` fail the job before any API call: they
+# are interpolated into REST paths, where gh reads `#` as a URL fragment and
+# `%` as an escape, so the call would hit (and could force-reset) a different
+# ref.
+#
 # The CALLER supplies the trigger (push to the default branch),
 # `concurrency`, and `runs-on`. No job `permissions` are needed: every call
 # authenticates as the App, never as GITHUB_TOKEN.
@@ -75,6 +80,15 @@ runs:
         if [ -z "$SOURCE" ]; then
           SOURCE=$(gh api "repos/$REPO" --jq .default_branch)
         fi
+
+        for name in "$SOURCE" $BRANCHES; do
+          case "$name" in
+            *[#%]*)
+              echo "::error::unsupported '#' or '%' in branch name: $name"
+              exit 1
+              ;;
+          esac
+        done
 
         open_conflict_pr() {
           branch="$1"
