@@ -279,12 +279,20 @@ source; otherwise the run warns and leaves it alone for a human to delete.
 Branch names containing `#` or `%` fail the job before any API call — they would
 corrupt the REST URL paths the action builds and target the wrong ref.
 
+Every branch merges one commit: `source-sha` if set, else the source tip at the
+start of the run. A caller that merges back only when its release run published
+nothing should pass the commit it evaluated (`${{ github.sha }}`), so a
+releasable push landing on the source mid-run doesn't reach a prerelease branch
+ahead of its own release. The SHA must be on the source branch; anything else
+fails the job.
+
 | input | default |
 |---|---|
 | `app-id` | *(required)* GitHub App client id |
 | `app-private-key` | *(required)* GitHub App private key |
 | `branches` | `'beta alpha next'` (space-separated, in order) |
 | `source` | `''` (empty — the repository's default branch) |
+| `source-sha` | `''` (empty — the source branch tip) |
 
 ```yaml
 name: Merge back
