@@ -31,10 +31,11 @@
 # a prerelease branch ahead of its own release. The commit must be on the
 # source branch.
 #
-# Branch names containing `#` or `%` fail the job before any API call: they
-# are interpolated into REST paths, where gh reads `#` as a URL fragment and
-# `%` as an escape, so the call would hit (and could force-reset) a different
-# ref.
+# Branch names containing `#`, `%`, `{`, or `}` fail the job before any API
+# call: they are interpolated into REST paths, where gh reads `#` as a URL
+# fragment, `%` as an escape, and `{owner}`/`{repo}`/`{branch}` as
+# placeholders it substitutes with its own repository context — any of
+# which would make the call hit (and could force-reset) a different ref.
 #
 # The CALLER supplies the trigger (push to the default branch),
 # `concurrency`, and `runs-on`. No job `permissions` are needed: every call
@@ -97,10 +98,9 @@ runs:
 
         for name in "$SOURCE" $BRANCHES; do
           case "$name" in
-            *[#%]*)
-              echo "::error::unsupported '#' or '%' in branch name: $name"
+            *[#%{}]*)
+              echo "::error::unsupported '#', '%', '{', or '}' in branch name: $name"
               exit 1
-              ;;
           esac
         done
 
@@ -120,8 +120,14 @@ runs:
         open_conflict_pr() {
           branch="$1"
           head="merge-back/$SOURCE-into-$branch"
+          # No -f base: $head must be checked across every base, not just
+          # $branch, because the generated name isn't guaranteed unique per
+          # (source,branch) pair when SOURCE itself contains "-into-" — two
+          # different pairs can collapse to the same string, and a PR
+          # already open on that head against a different base is still
+          # this branch in active use.
           existing=$(gh api --method GET "repos/$REPO/pulls" \
-            -f state=open -f base="$branch" -f head="$OWNER:$head" \
+            -f state=open -f head="$OWNER:$head" \
             --jq 'length')
           # Left alone even if the source moved on: it may already hold a
           # conflict resolution, and the next merge-back after it lands
