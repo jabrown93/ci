@@ -8,16 +8,21 @@
 #   * `required_signatures` — a merge commit created by the git CLI on a
 #     runner is unsigned and is rejected. Commits created through the API
 #     are signed by GitHub.
-#   * `require-pull-request` with `allowed_merge_methods: [squash]` — going
-#     through a PR would squash the stable branch into the prerelease
-#     branch, rewriting its history and guaranteeing permanent divergence.
+#   * `require-pull-request` — a PR per push would need a human merge, and
+#     a squash merge would rewrite the prerelease branch's history,
+#     guaranteeing permanent divergence.
 #   * The App token bypasses both rulesets (it is a listed bypass actor),
 #     so the API merge lands directly where a runner-side push would not.
 # It also needs no checkout: this is one API call per branch.
 #
 # A conflicting merge (HTTP 409) opens a PR instead and leaves the run
 # GREEN — a conflict is an expected, handled outcome and the PR is the
-# notification. Only unexpected API failures fail the job.
+# notification. Only unexpected API failures fail the job. The PR's head is
+# a throwaway `merge-back/<source>-into-<branch>` branch cut from the
+# source, never the source itself: GitHub's conflict editor commits the
+# resolution to the head branch, which must not be the stable branch. The
+# prerelease branch's ruleset must allow the "merge" method so the PR can
+# land as a merge commit.
 #
 # The CALLER supplies the trigger (push to the default branch),
 # `concurrency`, and `runs-on`. No job `permissions` are needed: every call
@@ -73,22 +78,39 @@ runs:
 
         open_conflict_pr() {
           branch="$1"
+          head="merge-back/$SOURCE-into-$branch"
           existing=$(gh api --method GET "repos/$REPO/pulls" \
-            -f state=open -f base="$branch" -f head="$OWNER:$SOURCE" \
+            -f state=open -f base="$branch" -f head="$OWNER:$head" \
             --jq 'length')
+          # Left alone even if the source moved on: it may already hold a
+          # conflict resolution, and the next merge-back after it lands
+          # carries the newer source commits.
           if [ "$existing" != "0" ]; then
             echo "::warning::$SOURCE conflicts with $branch; PR open already"
             return
           fi
-          body=$(printf '%s %s\n\n%s %s %s\n' \
+
+          sha=$(gh api "repos/$REPO/git/ref/heads/$SOURCE" --jq .object.sha)
+          # A branch left over from a closed, unmerged PR is reset, not reused.
+          if gh api "repos/$REPO/git/ref/heads/$head" --silent 2>/dev/null; then
+            gh api --silent --method PATCH "repos/$REPO/git/refs/heads/$head" \
+              -f sha="$sha" -F force=true
+          else
+            gh api --silent --method POST "repos/$REPO/git/refs" \
+              -f ref="refs/heads/$head" -f sha="$sha"
+          fi
+
+          body=$(printf '%s %s\n\n%s %s\n\n%s %s %s\n' \
             "Automated merge-back of \`$SOURCE\` into \`$branch\` hit a" \
             "conflict, so it could not be merged through the API." \
-            "Resolve it and merge with a **merge commit** — squashing" \
-            "would rewrite \`$branch\`'s history and make every later" \
+            "Resolve the conflicts on this PR (they are committed to" \
+            "\`$head\`, not \`$SOURCE\`)." \
+            "Then merge with **Create a merge commit**. Squashing would" \
+            "rewrite \`$branch\`'s history and make every later" \
             "merge-back conflict too.")
           url=$(gh api --method POST "repos/$REPO/pulls" \
             -f title="chore: merge $SOURCE into $branch" \
-            -f head="$SOURCE" \
+            -f head="$head" \
             -f base="$branch" \
             -f body="$body" \
             --jq .html_url)

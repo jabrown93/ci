@@ -267,6 +267,12 @@ A conflict (HTTP 409) opens a PR and leaves the run **green** — the PR is the
 notification. Only unexpected API failures fail the job. No job `permissions`
 are needed: every call authenticates as the App.
 
+The conflict PR's head is `merge-back/<source>-into-<branch>`, cut from the
+source branch, so GitHub's conflict editor commits the resolution there rather
+than to the stable branch. Land it with **Create a merge commit**, which the
+prerelease branch's ruleset must allow; squashing breaks the ancestry this
+action exists to keep.
+
 | input | default |
 |---|---|
 | `app-id` | *(required)* GitHub App client id |
