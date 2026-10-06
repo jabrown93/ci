@@ -93,8 +93,14 @@ runs:
         open_conflict_pr() {
           branch="$1"
           head="merge-back/$SOURCE-into-$branch"
+          # No -f base: $head must be checked across every base, not just
+          # $branch, because the generated name isn't guaranteed unique per
+          # (source,branch) pair when SOURCE itself contains "-into-" — two
+          # different pairs can collapse to the same string, and a PR
+          # already open on that head against a different base is still
+          # this branch in active use.
           existing=$(gh api --method GET "repos/$REPO/pulls" \
-            -f state=open -f base="$branch" -f head="$OWNER:$head" \
+            -f state=open -f head="$OWNER:$head" \
             --jq 'length')
           # Left alone even if the source moved on: it may already hold a
           # conflict resolution, and the next merge-back after it lands
