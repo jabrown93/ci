@@ -273,6 +273,9 @@ than to the stable branch. Land it with **Create a merge commit**, which the
 prerelease branch's ruleset must allow; squashing breaks the ancestry this
 action exists to keep.
 
+An existing `merge-back/…` branch is reused only if it has no commits beyond the
+source; otherwise the run warns and leaves it alone for a human to delete.
+
 Branch names containing `#` or `%` fail the job before any API call — they would
 corrupt the REST URL paths the action builds and target the wrong ref.
 

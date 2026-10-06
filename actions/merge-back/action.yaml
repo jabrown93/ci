@@ -105,8 +105,14 @@ runs:
           fi
 
           sha=$(gh api "repos/$REPO/git/ref/heads/$SOURCE" --jq .object.sha)
-          # A branch left over from a closed, unmerged PR is reset, not reused.
+          # A leftover branch is reset only if it holds no commits beyond the
+          # source; anything more is someone's work and is never discarded.
           if gh api "repos/$REPO/git/ref/heads/$head" --silent 2>/dev/null; then
+            ahead=$(gh api "repos/$REPO/compare/$sha...$head" --jq .ahead_by)
+            if [ "$ahead" != "0" ]; then
+              echo "::warning::$SOURCE conflicts with $branch; $head has $ahead commit(s) not in $SOURCE, left untouched — delete it to let merge-back reopen a PR"
+              return
+            fi
             gh api --silent --method PATCH "repos/$REPO/git/refs/heads/$head" \
               -f sha="$sha" -F force=true
           else
