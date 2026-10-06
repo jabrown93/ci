@@ -24,10 +24,11 @@
 # prerelease branch's ruleset must allow the "merge" method so the PR can
 # land as a merge commit.
 #
-# Branch names containing `#` or `%` fail the job before any API call: they
-# are interpolated into REST paths, where gh reads `#` as a URL fragment and
-# `%` as an escape, so the call would hit (and could force-reset) a different
-# ref.
+# Branch names containing `#`, `%`, `{`, or `}` fail the job before any API
+# call: they are interpolated into REST paths, where gh reads `#` as a URL
+# fragment, `%` as an escape, and `{owner}`/`{repo}`/`{branch}` as
+# placeholders it substitutes with its own repository context — any of
+# which would make the call hit (and could force-reset) a different ref.
 #
 # The CALLER supplies the trigger (push to the default branch),
 # `concurrency`, and `runs-on`. No job `permissions` are needed: every call
@@ -83,10 +84,9 @@ runs:
 
         for name in "$SOURCE" $BRANCHES; do
           case "$name" in
-            *[#%]*)
-              echo "::error::unsupported '#' or '%' in branch name: $name"
+            *[#%{}]*)
+              echo "::error::unsupported '#', '%', '{', or '}' in branch name: $name"
               exit 1
-              ;;
           esac
         done
 
