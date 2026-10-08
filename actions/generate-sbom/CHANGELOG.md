@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.1](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.0...generate-sbom-v1.2.1) (2026-10-08)
+
+
+### Bug Fixes
+
+* **dev-deps:** update anchore/sbom-action action to v0.24.3 ([#132](https://github.com/jabrown93/ci/issues/132)) ([5a7b0f7](https://github.com/jabrown93/ci/commit/5a7b0f77417ff43e12f660fbb69af5758be2360c))
+
 ## [1.2.0](https://github.com/jabrown93/ci/compare/generate-sbom-v1.1.2...generate-sbom-v1.2.0) (2026-09-29)
 
 
