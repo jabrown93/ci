@@ -170,7 +170,7 @@ runs:
 
     - name: Generate CycloneDX SBOM (syft)
       if: inputs.ecosystem == 'syft'
-      uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       with:
         path: .
         format: cyclonedx-json
@@ -185,7 +185,7 @@ runs:
       # leaving it unset, i.e. syft's default) keeps today's output.
       env:
         SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES: ${{ inputs.omit-dev == 'true' && 'false' || env.SYFT_JAVASCRIPT_INCLUDE_DEV_DEPENDENCIES }}
-      uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       with:
         path: .
         format: spdx-json
