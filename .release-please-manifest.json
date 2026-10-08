@@ -11,5 +11,5 @@
   "actions/go-build": "1.0.1",
   "actions/release-commit": "1.0.0",
   "actions/merge-back": "1.1.0",
-  "actions/docker-image": "1.0.0"
+  "actions/docker-image": "1.0.1"
 }
