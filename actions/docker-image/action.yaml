@@ -162,7 +162,7 @@ runs:
     # describes a single architecture while buildx's SPDX is per-platform.
     # Acceptable: these images differ only by compiled arch, not package set.
     - name: Generate CycloneDX SBOM
-      uses: anchore/sbom-action@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
+      uses: anchore/sbom-action@66cbf4bc1f1c0d2edc94016e65bc221b6bb0ad6c # v0.24.3
       env:
         # syft's file-metadata cataloger defaults to `owned-by-package`, which emits a
         # CycloneDX `type: file` component -- name, sha1, sha256, no purl, no license --
