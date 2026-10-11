@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.2](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.1...generate-sbom-v1.2.2) (2026-10-11)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/upload-artifact action to v7.0.2 ([#138](https://github.com/jabrown93/ci/issues/138)) ([7a1ea7b](https://github.com/jabrown93/ci/commit/7a1ea7bb5b2cfe845e842374c3f1510c45940671))
+
 ## [1.2.1](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.0...generate-sbom-v1.2.1) (2026-10-08)
 
 
