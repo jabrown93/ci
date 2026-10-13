@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.4](https://github.com/jabrown93/ci/compare/node-build-v1.0.3...node-build-v1.0.4) (2026-10-13)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/setup-node action to v7.1.0 ([#142](https://github.com/jabrown93/ci/issues/142)) ([89c48a7](https://github.com/jabrown93/ci/commit/89c48a7eae65b4014f71b297c36827cacb9af719))
+
 ## [1.0.3](https://github.com/jabrown93/ci/compare/node-build-v1.0.2...node-build-v1.0.3) (2026-08-30)
 
 
