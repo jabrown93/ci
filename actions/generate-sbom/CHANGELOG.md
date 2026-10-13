@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.4](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.3...generate-sbom-v1.2.4) (2026-10-13)
+
+
+### Bug Fixes
+
+* limit routine Actions artifacts to seven days ([#148](https://github.com/jabrown93/ci/issues/148)) ([c424523](https://github.com/jabrown93/ci/commit/c4245236227107596abd00bcba17ae9c85f4b918))
+
 ## [1.2.3](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.2...generate-sbom-v1.2.3) (2026-10-13)
 
 
