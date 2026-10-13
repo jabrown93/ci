@@ -82,7 +82,8 @@ and — where the underlying tooling needs elevated scopes — `permissions`.
 Generates **both** SBOM formats and uploads them as one artifact, each at the
 artifact root. CycloneDX comes from the ecosystem-native generator (so it
 reports the resolved dependency graph); SPDX comes from a single syft
-filesystem scan of the tree those generators just installed.
+filesystem scan of the tree those generators just installed. Workflow artifacts
+expire after 7 days; release workflows publish durable copies as release assets.
 
 > SPDX fidelity is ecosystem-dependent. `npm` gets the resolved tree from
 > `package-lock.json` (syft's directory scan reads the lockfile, not
@@ -320,7 +321,8 @@ Builds a multi-arch image, pushes it to GHCR, keylessly signs it with cosign,
 and attaches both SBOM formats as OCI referrers (SPDX from buildx `sbom: true`,
 CycloneDX from a syft scan attested with cosign — BuildKit cannot emit
 CycloneDX, hence the second pass). Tags `:beta` when `channel` is `beta`,
-otherwise `:latest`, always alongside `:v<version>`.
+otherwise `:latest`, always alongside `:v<version>`. Docker build records expire
+after 7 days; images and OCI SBOM referrers are unaffected.
 
 > **This action MUST be called from a job that lives directly in the calling
 > repo's own workflow file** — never from inside another reusable workflow.
