@@ -1,6 +1,7 @@
 ---
 # Composite action: generate CycloneDX AND SPDX SBOMs of the checked-out repo's
-# resolved dependencies and upload both as one workflow artifact.
+# resolved dependencies and upload both as one workflow artifact retained for
+# 7 days. Release workflows publish durable copies as release assets.
 #
 # Two formats because consumers of an SBOM are split: CycloneDX is what the
 # vulnerability/licence tooling reads, SPDX is what most compliance consumers
@@ -215,3 +216,4 @@ runs:
         name: ${{ inputs.artifact-name }}
         if-no-files-found: error
         path: ${{ runner.temp }}/sbom
+        retention-days: 7
