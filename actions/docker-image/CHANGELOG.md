@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/jabrown93/ci/compare/docker-image-v1.0.1...docker-image-v1.0.2) (2026-10-13)
+
+
+### Bug Fixes
+
+* limit routine Actions artifacts to seven days ([#148](https://github.com/jabrown93/ci/issues/148)) ([c424523](https://github.com/jabrown93/ci/commit/c4245236227107596abd00bcba17ae9c85f4b918))
+
 ## [1.0.1](https://github.com/jabrown93/ci/compare/docker-image-v1.0.0...docker-image-v1.0.1) (2026-10-08)
 
 
