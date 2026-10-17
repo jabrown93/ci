@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.1](https://github.com/jabrown93/ci/compare/merge-back-v1.1.0...merge-back-v1.1.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/create-github-app-token action to v3.3.0 ([#158](https://github.com/jabrown93/ci/issues/158)) ([3bddd5c](https://github.com/jabrown93/ci/commit/3bddd5c0c48557f4bb7339235a9e7835f27e2a33))
+
 ## [1.1.0](https://github.com/jabrown93/ci/compare/merge-back-v1.0.0...merge-back-v1.1.0) (2026-10-06)
 
 
