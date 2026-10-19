@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.2.5](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.4...generate-sbom-v1.2.5) (2026-10-19)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/setup-java action to v6.1.0 ([#164](https://github.com/jabrown93/ci/issues/164)) ([92afed5](https://github.com/jabrown93/ci/commit/92afed552af321cde866da340361f02a96b7f90d))
+
 ## [1.2.4](https://github.com/jabrown93/ci/compare/generate-sbom-v1.2.3...generate-sbom-v1.2.4) (2026-10-13)
 
 
