@@ -88,7 +88,7 @@ jobs:
       # CALLER's checkout, not this repo, so it would not be found.
       - name: Release checkout
         id: rc
-        uses: jabrown93/ci/actions/release-checkout@e24efb41d2e9a9f32af4521567f59911f2bbf7f4 # release-checkout-v1.0.1
+        uses: jabrown93/ci/actions/release-checkout@e2a518acefe35bfe90ca3bf9bb7c502d9f570213 # release-checkout-v1.0.2
         with:
           app-id: ${{ secrets.APP_ID }}
           app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
