@@ -1,5 +1,12 @@
 # Changelog
 
+## [3.0.7](https://github.com/jabrown93/ci/compare/workflows-v3.0.6...workflows-v3.0.7) (2026-10-21)
+
+
+### Bug Fixes
+
+* **dev-deps:** update cycjimmy/semantic-release-action action to v8.1.2 ([#168](https://github.com/jabrown93/ci/issues/168)) ([8a9d9cb](https://github.com/jabrown93/ci/commit/8a9d9cbc7cbc7a04187c93fc9997af529754eb20))
+
 ## [3.0.6](https://github.com/jabrown93/ci/compare/workflows-v3.0.5...workflows-v3.0.6) (2026-10-19)
 
 
