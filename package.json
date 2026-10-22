@@ -1,0 +1,11 @@
+{
+  "name": "ci-node-build-fixture-runner",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "lint": "npm --prefix fixtures/node-build run lint",
+    "prettier": "npm --prefix fixtures/node-build run prettier",
+    "build": "npm --prefix fixtures/node-build run build",
+    "test": "npm --prefix fixtures/node-build run test"
+  }
+}

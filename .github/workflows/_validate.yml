@@ -34,27 +34,24 @@ jobs:
   go-build:
     name: Self-test Go build action
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: fixtures/go-build
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # go-build checks out this repository itself; run commands from fixture.
+      # go-build checks out repository root; direct it to fixture module.
       - uses: ./actions/go-build
+        with:
+          go-version-file: fixtures/go-build/go.mod
+          packages: ./fixtures/go-build/...
 
   node-build:
     name: Self-test Node build action
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: fixtures/node-build
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
 
-      # node-build checks out this repository itself; run commands from fixture.
+      # node-build checks out repository root; root scripts invoke fixture.
       - uses: ./actions/node-build
