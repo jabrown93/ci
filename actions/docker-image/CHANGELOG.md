@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/jabrown93/ci/compare/docker-image-v1.0.2...docker-image-v1.0.3) (2026-10-22)
+
+
+### Bug Fixes
+
+* **dev-deps:** update dependency sigstore/cosign to v3.1.4 ([#176](https://github.com/jabrown93/ci/issues/176)) ([36a1493](https://github.com/jabrown93/ci/commit/36a1493bb39e05cf063fd036c534d9aed8b725d2))
+
 ## [1.0.2](https://github.com/jabrown93/ci/compare/docker-image-v1.0.1...docker-image-v1.0.2) (2026-10-13)
 
 
