@@ -15,33 +15,43 @@ description: >-
   schedule trigger and the issues/pull-requests/actions write permissions.
 inputs:
   days-before-stale:
+    description: Days of inactivity before marking an issue or PR stale.
     required: false
     default: '30'
   days-before-close:
+    description: Days after staleness before closing an issue or PR.
     required: false
     default: '7'
   stale-issue-message:
+    description: Message posted when marking an issue stale.
     required: false
     default: This issue has no recent activity and will be closed in 7 days. Comment to keep the issue open.
   stale-pr-message:
+    description: Message posted when marking a PR stale.
     required: false
     default: This PR has no recent activity and will be closed in 7 days. Comment or update to keep the PR open.
   stale-issue-label:
+    description: Label applied to stale issues.
     required: false
     default: stale
   stale-pr-label:
+    description: Label applied to stale PRs.
     required: false
     default: no-pr-activity
   exempt-issue-labels:
+    description: Comma-separated issue labels exempt from stale processing.
     required: false
     default: work-in-progress,disable-stale-bot,needs-triage
   exempt-pr-labels:
+    description: Comma-separated PR labels exempt from stale processing.
     required: false
     default: work-in-progress,disable-stale-bot,needs-triage
   close-issue-message:
+    description: Message posted when closing a stale issue.
     required: false
     default: No activity in over 30 days, closing.
   close-pr-message:
+    description: Message posted when closing a stale PR.
     required: false
     default: No activity in over 30 days, closing.
 runs:
