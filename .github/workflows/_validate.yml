@@ -1,0 +1,60 @@
+---
+# CI for this repository only. Renovate branch checks stop dependency-action
+# updates from reaching every consumer without syntax or behavior validation.
+name: Validate
+
+on:
+  push:
+    branches:
+      - main
+      - 'renovate/**'
+  pull_request:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  actionlint:
+    name: Lint workflows
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # v2.1.1
+      - name: Lint workflows
+        uses: raven-actions/actionlint@e01d1ea33dd6a5ed517d95b4c0c357560ac6f518
+        with:
+          version: 1.7.12
+          files: .github/workflows/*.yml
+
+  go-build:
+    name: Self-test Go build action
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fixtures/go-build
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # go-build checks out this repository itself; run commands from fixture.
+      - uses: ./actions/go-build
+
+  node-build:
+    name: Self-test Node build action
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: fixtures/node-build
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # node-build checks out this repository itself; run commands from fixture.
+      - uses: ./actions/node-build
