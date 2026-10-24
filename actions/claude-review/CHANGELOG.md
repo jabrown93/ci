@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.24](https://github.com/jabrown93/ci/compare/claude-review-v1.0.23...claude-review-v1.0.24) (2026-10-24)
+
+
+### Bug Fixes
+
+* **dev-deps:** update anthropics/claude-code-action action to v1.0.256 ([58b530b](https://github.com/jabrown93/ci/commit/58b530b7ae9f980267df778361f6133c991a700b))
+
 ## [1.0.23](https://github.com/jabrown93/ci/compare/claude-review-v1.0.22...claude-review-v1.0.23) (2026-10-23)
 
 
