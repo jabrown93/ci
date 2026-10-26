@@ -14,6 +14,12 @@
       "matchManagers": ["github-actions"],
       "matchFileNames": [".github/workflows/_*.yml"],
       "semanticCommitType": "chore"
+    },
+    {
+      "description": "Batch action bumps weekly. Each bump is typed `fix` (rule above) and so cuts a release, and every release opens a pin-bump PR in every consumer; near-daily upstream releases (e.g. claude-code-action) would otherwise cascade a release per day across the fleet. Vulnerability fixes are excluded so the preset's fix(security) rule keeps its `at any time` schedule -- local rules apply after preset rules, so an unscoped schedule here would override it.",
+      "matchManagers": ["github-actions"],
+      "matchJsonata": ["$not(vulnerabilityFixVersion != null)"],
+      "schedule": ["* 0-5 * * 1"]
     }
   ]
 }
