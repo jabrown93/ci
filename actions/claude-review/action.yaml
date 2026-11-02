@@ -64,7 +64,7 @@ runs:
         fetch-depth: 1
 
     - name: Claude PR review
-      uses: anthropics/claude-code-action@8d70a0dd265122bd65b8e09d3d959e65373ae2a1 # v1.0.260
+      uses: anthropics/claude-code-action@6d5ae526d25ce88daa2200be073e1a373167f064 # v1.0.265
       with:
         claude_code_oauth_token: ${{ inputs.claude-code-oauth-token }}
         track_progress: ${{ inputs.track-progress }}
