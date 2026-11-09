@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.6](https://github.com/jabrown93/ci/compare/docker-image-v1.0.5...docker-image-v1.0.6) (2026-11-09)
+
+
+### Bug Fixes
+
+* **dev-deps:** update docker/login-action action to v4.8.0 ([311b22e](https://github.com/jabrown93/ci/commit/311b22e11b0cc629141ac8008efa7f0e249065ad))
+
 ## [1.0.5](https://github.com/jabrown93/ci/compare/docker-image-v1.0.4...docker-image-v1.0.5) (2026-11-09)
 
 
