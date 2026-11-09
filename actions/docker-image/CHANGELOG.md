@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.5](https://github.com/jabrown93/ci/compare/docker-image-v1.0.4...docker-image-v1.0.5) (2026-11-09)
+
+
+### Bug Fixes
+
+* **dev-deps:** update sigstore/cosign-installer action to v4.1.3 ([3a5bd0d](https://github.com/jabrown93/ci/commit/3a5bd0d2b0d76dbb1fa896777b8e716ab75acfe5))
+
 ## [1.0.4](https://github.com/jabrown93/ci/compare/docker-image-v1.0.3...docker-image-v1.0.4) (2026-10-26)
 
 
