@@ -8,7 +8,7 @@
   "actions/release-checkout": "1.0.2",
   "actions/claude-review": "1.0.30",
   "actions/conventional-commits": "1.1.1",
-  "actions/go-build": "1.0.1",
+  "actions/go-build": "1.0.2",
   "actions/release-commit": "1.0.0",
   "actions/merge-back": "1.1.1",
   "actions/docker-image": "1.0.6"

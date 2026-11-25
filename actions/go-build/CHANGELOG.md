@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.2](https://github.com/jabrown93/ci/compare/go-build-v1.0.1...go-build-v1.0.2) (2026-11-25)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/setup-go action to v7.1.0 ([481da93](https://github.com/jabrown93/ci/commit/481da935d4b76d7f149d0b0c5bfaae767cd9c41e))
+
 ## [1.0.1](https://github.com/jabrown93/ci/compare/go-build-v1.0.0...go-build-v1.0.1) (2026-08-30)
 
 
