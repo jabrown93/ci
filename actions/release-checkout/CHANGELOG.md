@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.0.3](https://github.com/jabrown93/ci/compare/release-checkout-v1.0.2...release-checkout-v1.0.3) (2026-11-25)
+
+
+### Bug Fixes
+
+* **dev-deps:** update actions/create-github-app-token action to v3.4.0 ([cbdce8d](https://github.com/jabrown93/ci/commit/cbdce8d0c9c1bce3a3a152100e074038a7f32ce5))
+
 ## [1.0.2](https://github.com/jabrown93/ci/compare/release-checkout-v1.0.1...release-checkout-v1.0.2) (2026-10-17)
 
 
